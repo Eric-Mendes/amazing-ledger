@@ -7,17 +7,15 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
-
 	"github.com/stone-co/the-amazing-ledger/app"
 	"github.com/stone-co/the-amazing-ledger/app/domain/entities"
 	"github.com/stone-co/the-amazing-ledger/app/domain/vos"
-	proto "github.com/stone-co/the-amazing-ledger/gen/ledger"
+	proto "github.com/stone-co/the-amazing-ledger/gen/ledger/v1beta"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-func (a *API) CreateTransaction(ctx context.Context, req *proto.CreateTransactionRequest) (*emptypb.Empty, error) {
+func (a *API) CreateTransaction(ctx context.Context, req *proto.CreateTransactionRequest) (*proto.CreateTransactionResponse, error) {
 	tid, err := uuid.Parse(req.Id)
 	if err != nil {
 		zerolog.Ctx(ctx).Error().Err(err).Msg("failed to parse transaction id")
@@ -83,5 +81,5 @@ func (a *API) CreateTransaction(ctx context.Context, req *proto.CreateTransactio
 		}
 	}
 
-	return &emptypb.Empty{}, nil
+	return &proto.CreateTransactionResponse{}, nil
 }

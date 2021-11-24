@@ -1,0 +1,565 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "proto/ledger/v1beta/ledger.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "LedgerAPI"
+    },
+    {
+      "name": "HealthAPI"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/api/v1/accounts/{account}/balance": {
+      "get": {
+        "operationId": "LedgerAPI_GetAccountBalance",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1betaGetAccountBalanceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "account",
+            "description": "The account name, can be either a synthetic or an analytical one.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/api/v1/accounts/{account}/history": {
+      "get": {
+        "operationId": "LedgerAPI_ListAccountEntries",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1betaListAccountEntriesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "account",
+            "description": "The account path",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "startDate",
+            "description": "Start history date.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "endDate",
+            "description": "End history date.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "filter.companies",
+            "description": "Companies.",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "filter.events",
+            "description": "Events.",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "filter.operation",
+            "description": "Operation.\n\n - OPERATION_INVALID: Don't use. It's just the default value.\n - OPERATION_CREDIT: Credit operation.\n - OPERATION_DEBIT: Debit operation.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "OPERATION_INVALID",
+              "OPERATION_CREDIT",
+              "OPERATION_DEBIT"
+            ],
+            "default": "OPERATION_INVALID"
+          },
+          {
+            "name": "page.pageSize",
+            "description": "Max of 50, defaults to 10.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "page.pageToken",
+            "description": "Cursor for the next page.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/api/v1/reports/{account}/{filters.level}/{startDate}/{endDate}/synthetic": {
+      "get": {
+        "operationId": "LedgerAPI_GetSyntheticReport",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1betaGetSyntheticReportResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "account",
+            "description": "The account that's going to be queried.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "filters.level",
+            "description": "The level of the account path",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "startDate",
+            "description": "Start date of the range (timestamp).",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "endDate",
+            "description": "End date of the range (timestamp).",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "date-time"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/api/v1/transactions": {
+      "post": {
+        "operationId": "LedgerAPI_CreateTransaction",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1betaCreateTransactionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1betaCreateTransactionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Check - checks the system health.",
+        "operationId": "HealthAPI_Check",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1betaCheckResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "HealthAPI"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "CheckResponseServingStatus": {
+      "type": "string",
+      "enum": [
+        "SERVING_STATUS_UNKNOWN_INVALID",
+        "SERVING_STATUS_SERVING",
+        "SERVING_STATUS_NOT_SERVING",
+        "SERVING_STATUS_SERVICE_UNKNOWN"
+      ],
+      "default": "SERVING_STATUS_UNKNOWN_INVALID",
+      "description": "- SERVING_STATUS_UNKNOWN_INVALID: Don't use. It's just the default value.\n - SERVING_STATUS_SERVING: Healthy\n - SERVING_STATUS_NOT_SERVING: Unhealthy\n - SERVING_STATUS_SERVICE_UNKNOWN: Used only when streaming",
+      "title": "ServingStatus is the enum of the possible health check status"
+    },
+    "ListAccountEntriesRequestFilter": {
+      "type": "object",
+      "properties": {
+        "companies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Companies"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "title": "Events"
+        },
+        "operation": {
+          "$ref": "#/definitions/v1betaOperation",
+          "title": "Operation"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "protobufNullValue": {
+      "type": "string",
+      "enum": [
+        "NULL_VALUE"
+      ],
+      "default": "NULL_VALUE",
+      "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\n The JSON representation for `NullValue` is JSON `null`.\n\n - NULL_VALUE: Null value."
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1betaAccountEntry": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "It's the entry id."
+        },
+        "version": {
+          "type": "string",
+          "format": "int64",
+          "description": "Account version at the time."
+        },
+        "operation": {
+          "$ref": "#/definitions/v1betaOperation",
+          "description": "Operation: debit or credit."
+        },
+        "amount": {
+          "type": "string",
+          "format": "int64",
+          "description": "Amount (in cents)."
+        },
+        "event": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Event that generated the transaction"
+        },
+        "competenceDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Transaction date received on creation."
+        },
+        "metadata": {
+          "type": "object",
+          "description": "The entry metadata."
+        }
+      },
+      "title": "Represents a historical entry for a account"
+    },
+    "v1betaAccountResult": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "string",
+          "title": "The account name"
+        },
+        "credit": {
+          "type": "string",
+          "format": "int64",
+          "title": "credit"
+        },
+        "debit": {
+          "type": "string",
+          "format": "int64",
+          "title": "debit"
+        }
+      }
+    },
+    "v1betaCheckResponse": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/CheckResponseServingStatus",
+          "description": "Server status."
+        }
+      },
+      "title": "https://github.com/grpc/grpc/blob/master/doc/health-checking.md\nCheckResponse is the health check status"
+    },
+    "v1betaCreateTransactionRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID (UUID) to link the entries to a transaction."
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1betaEntry"
+          },
+          "description": "The list of entries, where len(entries) must be \u003e= 2."
+        },
+        "competenceDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The transaction competence date (execution date)."
+        },
+        "company": {
+          "type": "string",
+          "title": "The ledgers owner. Eg.: company name"
+        },
+        "event": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The event which triggered the transaction."
+        }
+      },
+      "title": "CreateTransactionRequest represents a transaction to be saved. A transaction must\nhave at least two entries, with a valid balance. More info here:\nhttps://en.wikipedia.org/wiki/Double-entry_bookkeeping"
+    },
+    "v1betaCreateTransactionResponse": {
+      "type": "object",
+      "description": "CreateTransactionResponse represents an empty response object."
+    },
+    "v1betaEntry": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "It's the idempotency key, and must be unique (UUID)."
+        },
+        "account": {
+          "type": "string",
+          "description": "Account involved in the operation."
+        },
+        "expectedVersion": {
+          "type": "string",
+          "format": "int64",
+          "description": "To deal with optimistic lock."
+        },
+        "operation": {
+          "$ref": "#/definitions/v1betaOperation",
+          "description": "Operation: debit or credit."
+        },
+        "amount": {
+          "type": "string",
+          "format": "int64",
+          "description": "Amount (in cents)."
+        },
+        "metadata": {
+          "type": "object",
+          "description": "The entry metadata."
+        }
+      },
+      "description": "Entry represents a new entry on the Ledger."
+    },
+    "v1betaGetAccountBalanceResponse": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "string",
+          "description": "The account name."
+        },
+        "currentVersion": {
+          "type": "string",
+          "format": "int64",
+          "description": "The account version. When a synthetic account is passed, -1 will be returned."
+        },
+        "balance": {
+          "type": "string",
+          "format": "int64",
+          "description": "The account balance."
+        }
+      },
+      "title": "GetAccountBalance Response"
+    },
+    "v1betaGetSyntheticReportFilters": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "integer",
+          "format": "int32",
+          "title": "The level of the account path"
+        }
+      },
+      "title": "Filters"
+    },
+    "v1betaGetSyntheticReportResponse": {
+      "type": "object",
+      "properties": {
+        "totalCredit": {
+          "type": "string",
+          "format": "int64",
+          "title": "All credit accumulated"
+        },
+        "totalDebit": {
+          "type": "string",
+          "format": "int64",
+          "title": "All debit accumulated"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1betaAccountResult"
+          },
+          "title": "The paths"
+        }
+      },
+      "title": "GetSyntheticReport Response"
+    },
+    "v1betaListAccountEntriesResponse": {
+      "type": "object",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1betaAccountEntry"
+          },
+          "title": "List of entries of a given account"
+        },
+        "nextPageToken": {
+          "type": "string",
+          "title": "Cursor that references the next page. Empty string if there is no next page"
+        }
+      },
+      "title": "ListAccountEntries Response"
+    },
+    "v1betaOperation": {
+      "type": "string",
+      "enum": [
+        "OPERATION_INVALID",
+        "OPERATION_CREDIT",
+        "OPERATION_DEBIT"
+      ],
+      "default": "OPERATION_INVALID",
+      "description": "Operation has the possible operations to be used in Entry.\n\n - OPERATION_INVALID: Don't use. It's just the default value.\n - OPERATION_CREDIT: Credit operation.\n - OPERATION_DEBIT: Debit operation."
+    },
+    "v1betaRequestPagination": {
+      "type": "object",
+      "properties": {
+        "pageSize": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Max of 50, defaults to 10."
+        },
+        "pageToken": {
+          "type": "string",
+          "description": "Cursor for the next page."
+        }
+      },
+      "title": "Request Pagination"
+    }
+  }
+}

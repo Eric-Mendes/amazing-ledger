@@ -1,0 +1,4 @@
+[submodule "proto"]
+	path = proto/ledger
+	url = git@github.com:stone-co/the-amazing-ledger-proto.git
+	branch = main

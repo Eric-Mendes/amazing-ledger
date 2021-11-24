@@ -10,7 +10,7 @@ import (
 
 	"github.com/stone-co/the-amazing-ledger/app"
 	"github.com/stone-co/the-amazing-ledger/app/domain/vos"
-	proto "github.com/stone-co/the-amazing-ledger/gen/ledger"
+	proto "github.com/stone-co/the-amazing-ledger/gen/ledger/v1beta"
 )
 
 func (a *API) GetAccountBalance(ctx context.Context, request *proto.GetAccountBalanceRequest) (*proto.GetAccountBalanceResponse, error) {

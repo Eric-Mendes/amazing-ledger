@@ -1,4 +1,4 @@
-version: v1beta1
+version: v1
 plugins:
   - name: go
     out: gen
@@ -16,9 +16,9 @@ plugins:
     opt:
       - paths=source_relative
       - logtostderr=true
-      - grpc_api_configuration=proto/ledger/ledger.yaml
+      - grpc_api_configuration=proto/ledger.yaml
 
   - name: openapiv2
     out: docs/openapi
     opt:
-      - grpc_api_configuration=proto/ledger/ledger.yaml
+      - grpc_api_configuration=proto/ledger.yaml

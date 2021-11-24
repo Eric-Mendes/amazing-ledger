@@ -18,7 +18,7 @@ import (
 	"github.com/stone-co/the-amazing-ledger/app/tests/testenv"
 	"github.com/stone-co/the-amazing-ledger/app/tests/testseed"
 	"github.com/stone-co/the-amazing-ledger/app/tests/testutils"
-	proto "github.com/stone-co/the-amazing-ledger/gen/ledger"
+	proto "github.com/stone-co/the-amazing-ledger/gen/ledger/v1beta"
 )
 
 func TestE2E_RPC_CreateTransactionSuccess(t *testing.T) {
@@ -122,7 +122,7 @@ func TestE2E_RPC_CreateTransactionFailure(t *testing.T) {
 						Id:              uuid.New().String(),
 						Account:         testdata.GenerateAccountPath(),
 						ExpectedVersion: 3,
-						Operation:       proto.Operation_OPERATION_UNSPECIFIED,
+						Operation:       proto.Operation_OPERATION_INVALID,
 						Amount:          123,
 					},
 					{

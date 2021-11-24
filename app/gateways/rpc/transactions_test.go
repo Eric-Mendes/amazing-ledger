@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -16,7 +15,7 @@ import (
 	"github.com/stone-co/the-amazing-ledger/app/domain/entities"
 	"github.com/stone-co/the-amazing-ledger/app/tests/mocks"
 	"github.com/stone-co/the-amazing-ledger/app/tests/testdata"
-	proto "github.com/stone-co/the-amazing-ledger/gen/ledger"
+	proto "github.com/stone-co/the-amazing-ledger/gen/ledger/v1beta"
 )
 
 func TestAPI_CreateTransaction_Success(t *testing.T) {
@@ -81,7 +80,7 @@ func TestAPI_CreateTransaction_Success(t *testing.T) {
 
 			got, err := api.CreateTransaction(context.Background(), tt.request)
 			assert.NoError(t, err)
-			assert.Equal(t, &emptypb.Empty{}, got)
+			assert.Equal(t, &proto.CreateTransactionResponse{}, got)
 		})
 	}
 }
@@ -141,7 +140,7 @@ func TestAPI_CreateTransaction_InvalidRequest(t *testing.T) {
 						Id:              uuid.New().String(),
 						Account:         testdata.GenerateAccountPath(),
 						ExpectedVersion: 2,
-						Operation:       proto.Operation_OPERATION_UNSPECIFIED,
+						Operation:       proto.Operation_OPERATION_INVALID,
 						Amount:          123,
 					},
 					{

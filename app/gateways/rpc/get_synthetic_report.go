@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/stone-co/the-amazing-ledger/app/domain/vos"
-	proto "github.com/stone-co/the-amazing-ledger/gen/ledger"
+	proto "github.com/stone-co/the-amazing-ledger/gen/ledger/v1beta"
 )
 
 func (a *API) GetSyntheticReport(ctx context.Context, request *proto.GetSyntheticReportRequest) (*proto.GetSyntheticReportResponse, error) {

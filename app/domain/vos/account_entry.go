@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/stone-co/the-amazing-ledger/app/pagination"
-	proto "github.com/stone-co/the-amazing-ledger/gen/ledger"
+	proto "github.com/stone-co/the-amazing-ledger/gen/ledger/v1beta"
 )
 
 type AccountEntryRequest struct {

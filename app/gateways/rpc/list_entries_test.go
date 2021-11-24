@@ -12,7 +12,7 @@ import (
 	"github.com/stone-co/the-amazing-ledger/app/domain/vos"
 	"github.com/stone-co/the-amazing-ledger/app/pagination"
 	"github.com/stone-co/the-amazing-ledger/app/tests/mocks"
-	proto "github.com/stone-co/the-amazing-ledger/gen/ledger"
+	proto "github.com/stone-co/the-amazing-ledger/gen/ledger/v1beta"
 )
 
 func TestAPI_ListAccountEntries_Success(t *testing.T) {

@@ -19,7 +19,7 @@ import (
 	"github.com/stone-co/the-amazing-ledger/app/tests/testenv"
 	"github.com/stone-co/the-amazing-ledger/app/tests/testseed"
 	"github.com/stone-co/the-amazing-ledger/app/tests/testutils"
-	proto "github.com/stone-co/the-amazing-ledger/gen/ledger"
+	proto "github.com/stone-co/the-amazing-ledger/gen/ledger/v1beta"
 )
 
 type createTransactionBody struct {
@@ -176,7 +176,7 @@ func TestE2E_Gateway_CreateTransactionFailure(t *testing.T) {
 						ID:              uuid.New().String(),
 						Account:         testdata.GenerateAccountPath(),
 						ExpectedVersion: vos.NextAccountVersion.AsInt64(),
-						Operation:       int8(proto.Operation_OPERATION_UNSPECIFIED),
+						Operation:       int8(proto.Operation_OPERATION_INVALID),
 						Amount:          100,
 					},
 					{

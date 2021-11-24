@@ -3,18 +3,18 @@ config_version: 3
 
 http:
   rules:
-    - selector: ledger.LedgerService.CreateTransaction
+    - selector: ledger.v1beta.LedgerAPI.CreateTransaction
       post: /api/v1/transactions
       body: "*"
 
-    - selector: ledger.LedgerService.GetAccountBalance
+    - selector: ledger.v1beta.LedgerAPI.GetAccountBalance
       get: /api/v1/accounts/{account}/balance
 
-    - selector: ledger.LedgerService.ListAccountEntries
+    - selector: ledger.v1beta.LedgerAPI.ListAccountEntries
       get: /api/v1/accounts/{account}/history
 
-    - selector: ledger.LedgerService.GetSyntheticReport
+    - selector: ledger.v1beta.LedgerAPI.GetSyntheticReport
       get: /api/v1/reports/{account}/{filters.level}/{start_date}/{end_date}/synthetic
 
-    - selector: ledger.Health.Check
+    - selector: ledger.v1beta.HealthAPI.Check
       get: /health

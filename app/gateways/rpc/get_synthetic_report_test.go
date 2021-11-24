@@ -14,7 +14,7 @@ import (
 	"github.com/stone-co/the-amazing-ledger/app/domain/vos"
 	"github.com/stone-co/the-amazing-ledger/app/tests/mocks"
 	"github.com/stone-co/the-amazing-ledger/app/tests/testdata"
-	proto "github.com/stone-co/the-amazing-ledger/gen/ledger"
+	proto "github.com/stone-co/the-amazing-ledger/gen/ledger/v1beta"
 )
 
 func TestAPI_GetSyntheticReport(t *testing.T) {

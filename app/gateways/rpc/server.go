@@ -18,7 +18,7 @@ import (
 	"github.com/stone-co/the-amazing-ledger/app"
 	"github.com/stone-co/the-amazing-ledger/app/domain/usecases"
 	httpHandlers "github.com/stone-co/the-amazing-ledger/app/gateways/http"
-	proto "github.com/stone-co/the-amazing-ledger/gen/ledger"
+	proto "github.com/stone-co/the-amazing-ledger/gen/ledger/v1beta"
 )
 
 func NewServer(ctx context.Context, useCase *usecases.LedgerUseCase, nr *newrelic.Application, cfg *app.Config, commit, time string) (*grpc.Server, *http.Server, error) {
@@ -57,8 +57,8 @@ func newRPCServer(api *API, nr *newrelic.Application) *grpc.Server {
 		),
 	)
 
-	proto.RegisterLedgerServiceServer(srv, api)
-	proto.RegisterHealthServer(srv, api)
+	proto.RegisterLedgerAPIServer(srv, api)
+	proto.RegisterHealthAPIServer(srv, api)
 
 	return srv
 }
@@ -72,12 +72,12 @@ func newGatewayServer(ctx context.Context, cfg *app.Config, commit, time string)
 		return nil, fmt.Errorf("failed to dial server: %w", err)
 	}
 
-	err = proto.RegisterLedgerServiceHandler(ctx, gwMux, conn)
+	err = proto.RegisterLedgerAPIHandler(ctx, gwMux, conn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to register ledger handler: %w", err)
 	}
 
-	err = proto.RegisterHealthHandler(ctx, gwMux, conn)
+	err = proto.RegisterHealthAPIHandler(ctx, gwMux, conn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to register health handler: %w", err)
 	}

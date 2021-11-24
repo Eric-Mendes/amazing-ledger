@@ -14,7 +14,7 @@ import (
 	"github.com/stone-co/the-amazing-ledger/app/tests"
 	"github.com/stone-co/the-amazing-ledger/app/tests/testenv"
 	"github.com/stone-co/the-amazing-ledger/app/tests/testutils"
-	proto "github.com/stone-co/the-amazing-ledger/gen/ledger"
+	proto "github.com/stone-co/the-amazing-ledger/gen/ledger/v1beta"
 )
 
 func TestMain(m *testing.M) {
@@ -45,7 +45,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("could not create client connection: %v", err)
 	}
 
-	testenv.RPCClient = proto.NewLedgerServiceClient(conn)
+	testenv.RPCClient = proto.NewLedgerAPIClient(conn)
 	testenv.DB = pgDocker.DB
 
 	_, err = pgDocker.DB.Exec(context.Background(), `insert into event (id, name) values (1, 'default');`)

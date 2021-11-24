@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/stone-co/the-amazing-ledger/app"
-	proto "github.com/stone-co/the-amazing-ledger/gen/ledger"
+	proto "github.com/stone-co/the-amazing-ledger/gen/ledger/v1beta"
 )
 
 const (

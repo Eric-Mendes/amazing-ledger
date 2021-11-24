@@ -11,7 +11,7 @@ import (
 
 	"github.com/stone-co/the-amazing-ledger/app/domain/vos"
 	"github.com/stone-co/the-amazing-ledger/app/pagination"
-	proto "github.com/stone-co/the-amazing-ledger/gen/ledger"
+	proto "github.com/stone-co/the-amazing-ledger/gen/ledger/v1beta"
 )
 
 func (a *API) ListAccountEntries(ctx context.Context, request *proto.ListAccountEntriesRequest) (*proto.ListAccountEntriesResponse, error) {
