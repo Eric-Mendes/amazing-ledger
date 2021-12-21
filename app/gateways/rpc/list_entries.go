@@ -15,7 +15,7 @@ import (
 )
 
 func (a *API) ListAccountEntries(ctx context.Context, request *proto.ListAccountEntriesRequest) (*proto.ListAccountEntriesResponse, error) {
-	account, err := vos.NewAnalyticAccount(request.Account)
+	account, err := vos.NewAccount(request.Account)
 	if err != nil {
 		zerolog.Ctx(ctx).Error().Err(err).Msg("can't create account name")
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -69,6 +69,7 @@ func (a *API) ListAccountEntries(ctx context.Context, request *proto.ListAccount
 			Event:          int32(entry.Event),
 			CompetenceDate: timestamppb.New(entry.CompetenceDate),
 			Metadata:       metadata,
+			Account:        entry.Account,
 		})
 	}
 

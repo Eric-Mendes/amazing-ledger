@@ -102,6 +102,29 @@ func TestAPI_ListAccountEntries_Success(t *testing.T) {
 				}, nil
 			},
 		},
+		{
+			name: "should succeed when listing synthetic account entries",
+			useCaseSetup: &mocks.UseCaseMock{
+				ListAccountEntriesFunc: func(_ context.Context, _ vos.AccountEntryRequest) (vos.AccountEntryResponse, error) {
+					return vos.AccountEntryResponse{
+						Entries:  []vos.AccountEntry{},
+						NextPage: nil,
+					}, nil
+				},
+			},
+			request: &proto.ListAccountEntriesRequest{
+				Account:   "liability.*.account1",
+				StartDate: timestamppb.Now(),
+				EndDate:   timestamppb.Now(),
+				Page:      nil,
+			},
+			want: func() (*proto.ListAccountEntriesResponse, error) {
+				return &proto.ListAccountEntriesResponse{
+					Entries:       []*proto.AccountEntry{},
+					NextPageToken: "",
+				}, nil
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -116,7 +139,7 @@ func TestAPI_ListAccountEntries_Success(t *testing.T) {
 			assert.Equal(t, want, got)
 			assert.Len(t, tt.useCaseSetup.ListAccountEntriesCalls(), 1)
 
-			account, _ := vos.NewAnalyticAccount(tt.request.Account)
+			account, _ := vos.NewAccount(tt.request.Account)
 			page, _ := pagination.NewPage(nil)
 			assert.Equal(t, vos.AccountEntryRequest{
 				Account:   account,

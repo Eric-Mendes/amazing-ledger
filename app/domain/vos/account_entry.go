@@ -42,6 +42,7 @@ type AccountEntryResponse struct {
 
 type AccountEntry struct {
 	ID             uuid.UUID
+	Account        string
 	Version        Version
 	Operation      OperationType
 	Amount         int

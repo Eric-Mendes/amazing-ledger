@@ -43,6 +43,22 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "startDate",
+            "description": "Start date for calculating account balance, INCLUSIVE.\nIf passed, the version will be the most recent one within the interval.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "endDate",
+            "description": "End date for calculating account balance, EXCLUSIVE.\nIf passed, the version will be the most recent one within the interval.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
           }
         ],
         "tags": [
@@ -365,6 +381,10 @@
         "metadata": {
           "type": "object",
           "description": "The entry metadata."
+        },
+        "account": {
+          "type": "string",
+          "description": "The account responsible for the entry."
         }
       },
       "title": "Represents a historical entry for a account"
@@ -475,7 +495,7 @@
         "currentVersion": {
           "type": "string",
           "format": "int64",
-          "description": "The account version. When a synthetic account is passed, -1 will be returned."
+          "description": "The account version.\nWhen a synthetic account is passed, -1 will be returned.\nIf either start_date or end_date is passed, the value will be the most recent one within the interval."
         },
         "balance": {
           "type": "string",

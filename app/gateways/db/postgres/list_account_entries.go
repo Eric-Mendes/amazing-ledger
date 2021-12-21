@@ -14,6 +14,7 @@ const (
 	_accountEntriesQueryPrefix = `
 select
 	id,
+	account,
 	version,
 	operation,
 	amount,
@@ -23,7 +24,7 @@ select
 from
 	entry
 where
-	account = $1
+	account %s $1
 	and competence_date >= $2
 	and competence_date < $3
 `
@@ -89,6 +90,7 @@ func (r LedgerRepository) ListAccountEntries(ctx context.Context, req vos.Accoun
 
 		if err = rows.Scan(
 			&entry.ID,
+			&entry.Account,
 			&entry.Version,
 			&entry.Operation,
 			&entry.Amount,
@@ -126,10 +128,16 @@ func (r LedgerRepository) ListAccountEntries(ctx context.Context, req vos.Accoun
 
 func generateListAccountEntriesQuery(req vos.AccountEntryRequest) (string, []interface{}, error) {
 	var (
-		query     = _accountEntriesQueryPrefix
 		totalArgs = 4
 		args      = []interface{}{req.Account.Value(), req.StartDate, req.EndDate, req.Page.Size + 1}
 	)
+
+	operator := "="
+	if req.Account.Type() == vos.Synthetic {
+		operator = "~"
+	}
+
+	query := fmt.Sprintf(_accountEntriesQueryPrefix, operator)
 
 	switch len(req.Filter.Companies) {
 	case 0:

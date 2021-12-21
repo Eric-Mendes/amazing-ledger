@@ -92,7 +92,7 @@ test-coverage:
 generate:
 	@echo "Go Generating"
 	@rm -rf gen/*
-	@buf generate --path proto/ledger
+	@buf generate
 	@go generate ./...
 
 .PHONY: goimports

@@ -22,6 +22,9 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 	account, err := vos.NewAnalyticAccount("liability.test.account1")
 	assert.NoError(t, err)
 
+	synthAccount, err := vos.NewAccount("liability.*.account1")
+	assert.NoError(t, err)
+
 	size := 10
 
 	end := time.Now().UTC().Round(time.Microsecond)
@@ -49,8 +52,25 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 					},
 				}
 			},
-			expectedQuery: _accountEntriesQueryPrefix + _accountEntriesQuerySuffix,
+			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "=") + _accountEntriesQuerySuffix,
 			expectedArgs:  []interface{}{account.Value(), start, end, size + 1},
+			expectedErr:   nil,
+		},
+		{
+			name: "valid - no filters - no pagination",
+			req: func() vos.AccountEntryRequest {
+				return vos.AccountEntryRequest{
+					Account:   synthAccount,
+					StartDate: start,
+					EndDate:   end,
+					Page: pagination.Page{
+						Size:   size,
+						Cursor: nil,
+					},
+				}
+			},
+			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "~") + _accountEntriesQuerySuffix,
+			expectedArgs:  []interface{}{synthAccount.Value(), start, end, size + 1},
 			expectedErr:   nil,
 		},
 		{
@@ -71,7 +91,7 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 					},
 				}
 			},
-			expectedQuery: _accountEntriesQueryPrefix +
+			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "=") +
 				fmt.Sprintf(_accountEntriesQueryPagination, 5, 6) +
 				_accountEntriesQuerySuffix,
 			expectedArgs: []interface{}{account.Value(), start, end, size + 1, end, version.AsInt64()},
@@ -93,7 +113,7 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 					},
 				}
 			},
-			expectedQuery: _accountEntriesQueryPrefix +
+			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "=") +
 				fmt.Sprintf(_accountEntriesCompanyFilter, 5) +
 				_accountEntriesQuerySuffix,
 			expectedArgs: []interface{}{account.Value(), start, end, size + 1, "company_1"},
@@ -115,7 +135,7 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 					},
 				}
 			},
-			expectedQuery: _accountEntriesQueryPrefix +
+			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "=") +
 				fmt.Sprintf(_accountEntriesCompaniesFilter, 5) +
 				_accountEntriesQuerySuffix,
 			expectedArgs: []interface{}{account.Value(), start, end, size + 1, []string{"company_1", "company_2"}},
@@ -137,7 +157,7 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 					},
 				}
 			},
-			expectedQuery: _accountEntriesQueryPrefix +
+			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "=") +
 				fmt.Sprintf(_accountEntriesEventFilter, 5) +
 				_accountEntriesQuerySuffix,
 			expectedArgs: []interface{}{account.Value(), start, end, size + 1, int32(1)},
@@ -159,7 +179,7 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 					},
 				}
 			},
-			expectedQuery: _accountEntriesQueryPrefix +
+			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "=") +
 				fmt.Sprintf(_accountEntriesEventsFilter, 5) +
 				_accountEntriesQuerySuffix,
 			expectedArgs: []interface{}{account.Value(), start, end, size + 1, []int32{1, 2}},
@@ -181,7 +201,7 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 					},
 				}
 			},
-			expectedQuery: _accountEntriesQueryPrefix +
+			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "=") +
 				fmt.Sprintf(_accountEntriesOperationFilter, 5) +
 				_accountEntriesQuerySuffix,
 			expectedArgs: []interface{}{account.Value(), start, end, size + 1, vos.CreditOperation},
@@ -212,7 +232,7 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 					},
 				}
 			},
-			expectedQuery: _accountEntriesQueryPrefix +
+			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "=") +
 				fmt.Sprintf(_accountEntriesCompaniesFilter, 5) +
 				fmt.Sprintf(_accountEntriesEventFilter, 6) +
 				fmt.Sprintf(_accountEntriesOperationFilter, 7) +
@@ -260,7 +280,7 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 					},
 				}
 			},
-			expectedQuery: _accountEntriesQueryPrefix + _accountEntriesQuerySuffix,
+			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "=") + _accountEntriesQuerySuffix,
 			expectedArgs:  []interface{}{account.Value(), start, end, size + 1},
 			expectedErr:   nil,
 		},
@@ -282,9 +302,10 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 	}
 
 	const (
-		account1 = "liability.abc.account1"
-		account2 = "liability.abc.account2"
-		amount   = 100
+		account1     = "liability.abc.account1"
+		account2     = "liability.abc.account2"
+		synthAccount = "liability.abc.*"
+		amount       = 100
 	)
 
 	testCases := []struct {
@@ -354,6 +375,42 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 			},
 			want: func(_ *testing.T, txs []entities.Transaction) w {
 				entries := accountEntriesFromTransaction(t, txs[0], account1)
+
+				return w{
+					entries: entries,
+					cursor:  nil,
+				}
+			},
+		},
+		{
+			name: "return entries from all accounts",
+			seedRepo: func(t *testing.T, ctx context.Context, r *LedgerRepository) []entities.Transaction {
+				e1 := createEntry(t, vos.DebitOperation, account1, vos.Version(1), amount)
+				e2 := createEntry(t, vos.CreditOperation, account2, vos.IgnoreAccountVersion, amount)
+
+				tx := createTransaction(t, ctx, r, e1, e2)
+
+				return []entities.Transaction{tx}
+			},
+			setupRequest: func(t *testing.T, _ []entities.Transaction) vos.AccountEntryRequest {
+				account, err := vos.NewAccount(synthAccount)
+				assert.NoError(t, err)
+
+				now := time.Now()
+
+				return vos.AccountEntryRequest{
+					Account:   account,
+					StartDate: now.Add(-10 * time.Second),
+					EndDate:   now.Add(10 * time.Second),
+					Page: pagination.Page{
+						Size:   10,
+						Cursor: nil,
+					},
+				}
+			},
+			want: func(_ *testing.T, txs []entities.Transaction) w {
+				entries := accountEntriesFromTransaction(t, txs[0], account1)
+				entries = append(entries, accountEntriesFromTransaction(t, txs[0], account2)...)
 
 				return w{
 					entries: entries,
@@ -728,6 +785,7 @@ func accountEntriesFromTransaction(t *testing.T, tx entities.Transaction, accoun
 
 		act = append(act, vos.AccountEntry{
 			ID:             et.ID,
+			Account:        et.Account.Value(),
 			Version:        et.Version,
 			Operation:      et.Operation,
 			Amount:         et.Amount,
