@@ -11,7 +11,7 @@ GIT_COMMIT=$(shell git rev-parse HEAD)
 GIT_BUILD_TIME=$(shell date '+%Y-%m-%d__%I:%M:%S%p')
 
 BUF_VERSION=0.43.2
-GOLANGCI_LINT_VERSION=1.41.1
+GOLANGCI_LINT_VERSION=1.43.0
 
 .PHONY: setup
 setup:
@@ -21,18 +21,18 @@ setup:
 	go mod download
 	@echo "==> Setup: Getting tools"
 	@cat tools/tools.go | grep _ | awk -F'"' '{print $$2}' | xargs -tI % go install %
-	@echo "==> Setup: Checking buf installation"
+ 	@echo "==> Setup: Checking buf installation"
 ifeq (, $(shell command -v buf 2> /dev/null))
-	@echo "    ==> Setup: Buf not installed, please follow the instructions on https://docs.buf.build/installation and install version ${BUF_VERSION}"
+ 	@echo "    ==> Setup: Buf not installed, please follow the instructions on docs.buf.build/installation"
 else
-	@echo "    ==> Setup: Buf already installed"
+ 	@echo "    ==> Setup: Buf already installed"
 endif
-	@echo "==> Setup: Checking golangci-lint installation"
+ 	@echo "==> Setup: Checking golangci-lint installation"
 ifeq (, $(shell command -v golangci-lint 2> /dev/null))
-	@echo "    ==> Setup: Installing golangci-lint"
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v${GOLANGCI_LINT_VERSION}
+ 	@echo "    ==> Setup: Installing golangci-lint"
+ 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v${GOLANGCI_LINT_VERSION}
 else
-	@echo "    ==> Setup: Golangci-lint already installed"
+ 	@echo "    ==> Setup: Golangci-lint already installed"
 endif
 
 .PHONY: test

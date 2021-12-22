@@ -3,12 +3,16 @@ package rpc
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/stone-co/the-amazing-ledger/app"
+	"github.com/stone-co/the-amazing-ledger/app/domain"
 	"github.com/stone-co/the-amazing-ledger/app/domain/vos"
 	"github.com/stone-co/the-amazing-ledger/app/tests/mocks"
 	"github.com/stone-co/the-amazing-ledger/app/tests/testdata"
@@ -22,8 +26,8 @@ func TestAPI_GetAccountBalance_Analytic_Success(t *testing.T) {
 
 		accountBalance := vos.NewAnalyticAccountBalance(account, vos.Version(1), 200)
 		mockedUsecase := &mocks.UseCaseMock{
-			GetAccountBalanceFunc: func(ctx context.Context, accountPath vos.Account) (vos.AccountBalance, error) {
-				accountBalance.Account = accountPath
+			GetAccountBalanceFunc: func(ctx context.Context, input domain.GetAccountBalanceInput) (vos.AccountBalance, error) {
+				accountBalance.Account = input.Account
 
 				return accountBalance, nil
 			},
@@ -52,7 +56,7 @@ func TestAPI_GetAccountBalance_Synthetic_Success(t *testing.T) {
 
 		balance := vos.NewSyntheticAccountBalance(account, 100)
 		mockedUsecase := &mocks.UseCaseMock{
-			GetAccountBalanceFunc: func(ctx context.Context, account vos.Account) (vos.AccountBalance, error) {
+			GetAccountBalanceFunc: func(ctx context.Context, input domain.GetAccountBalanceInput) (vos.AccountBalance, error) {
 				return balance, nil
 			},
 		}
@@ -73,7 +77,68 @@ func TestAPI_GetAccountBalance_Synthetic_Success(t *testing.T) {
 	})
 }
 
+func TestAPI_GetAccountBalance_Bounds(t *testing.T) {
+	t.Parallel()
+
+	account, err := vos.NewAccount("liability.stone.clients.*")
+	require.NoError(t, err)
+
+	balance := vos.NewSyntheticAccountBalance(account, 100)
+	mockedUsecase := &mocks.UseCaseMock{
+		GetAccountBalanceFunc: func(ctx context.Context, input domain.GetAccountBalanceInput) (vos.AccountBalance, error) {
+			return balance, nil
+		},
+	}
+	api := NewAPI(mockedUsecase)
+
+	tests := []struct {
+		name    string
+		request *proto.GetAccountBalanceRequest
+	}{
+		{
+			name: "both dates set",
+			request: &proto.GetAccountBalanceRequest{
+				Account:   "liability.stone.clients.*",
+				StartDate: timestamppb.Now(),
+				EndDate:   timestamppb.New(time.Now().Add(1 * time.Second)),
+			},
+		},
+		{
+			name: "only start set",
+			request: &proto.GetAccountBalanceRequest{
+				Account:   "liability.stone.clients.*",
+				StartDate: timestamppb.Now(),
+			},
+		},
+		{
+			name: "only end set",
+			request: &proto.GetAccountBalanceRequest{
+				Account: "liability.stone.clients.*",
+				EndDate: timestamppb.Now(),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := api.GetAccountBalance(context.Background(), tt.request)
+			assert.NoError(t, err)
+
+			assert.Equal(t, &proto.GetAccountBalanceResponse{
+				Account:        account.Value(),
+				CurrentVersion: -1,
+				Balance:        100,
+			}, got)
+		})
+	}
+}
+
 func TestAPI_GetAccountBalance_InvalidRequest(t *testing.T) {
+	t.Parallel()
+
 	testCases := []struct {
 		name            string
 		useCaseSetup    *mocks.UseCaseMock
@@ -91,9 +156,20 @@ func TestAPI_GetAccountBalance_InvalidRequest(t *testing.T) {
 			expectedMessage: app.ErrInvalidAccountComponentCharacters.Error(),
 		},
 		{
+			name:         "should return an error if dates are invalid",
+			useCaseSetup: &mocks.UseCaseMock{},
+			request: &proto.GetAccountBalanceRequest{
+				Account:   testdata.GenerateAccount(),
+				StartDate: timestamppb.Now(),
+				EndDate:   timestamppb.New(time.Now().Add(-1 * time.Second)),
+			},
+			expectedCode:    codes.InvalidArgument,
+			expectedMessage: "end date should be a timestamp set after start date",
+		},
+		{
 			name: "should return an error if account does not exist",
 			useCaseSetup: &mocks.UseCaseMock{
-				GetAccountBalanceFunc: func(ctx context.Context, account vos.Account) (vos.AccountBalance, error) {
+				GetAccountBalanceFunc: func(ctx context.Context, input domain.GetAccountBalanceInput) (vos.AccountBalance, error) {
 					return vos.AccountBalance{}, app.ErrAccountNotFound
 				},
 			},
@@ -106,7 +182,10 @@ func TestAPI_GetAccountBalance_InvalidRequest(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			api := NewAPI(tt.useCaseSetup)
 
 			_, err := api.GetAccountBalance(context.Background(), tt.request)

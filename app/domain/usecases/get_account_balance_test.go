@@ -3,11 +3,13 @@ package usecases
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stone-co/the-amazing-ledger/app"
+	"github.com/stone-co/the-amazing-ledger/app/domain"
 	"github.com/stone-co/the-amazing-ledger/app/domain/instrumentators"
 	"github.com/stone-co/the-amazing-ledger/app/domain/vos"
 	"github.com/stone-co/the-amazing-ledger/app/tests/mocks"
@@ -27,7 +29,9 @@ func TestLedgerUseCase_GetAccountBalance_Analytic(t *testing.T) {
 		}
 		usecase := NewLedgerUseCase(mockedRepository, instrumentators.NewLedgerInstrumentator(&newrelic.Application{}))
 
-		got, err := usecase.GetAccountBalance(context.Background(), accountPath)
+		input := domain.GetAccountBalanceInput{Account: accountPath}
+
+		got, err := usecase.GetAccountBalance(context.Background(), input)
 		assert.NoError(t, err)
 
 		assert.Equal(t, accountBalance.Account, got.Account)
@@ -46,7 +50,9 @@ func TestLedgerUseCase_GetAccountBalance_Analytic(t *testing.T) {
 		}
 		usecase := NewLedgerUseCase(mockedRepository, instrumentators.NewLedgerInstrumentator(&newrelic.Application{}))
 
-		got, err := usecase.GetAccountBalance(context.Background(), accountPath)
+		input := domain.GetAccountBalanceInput{Account: accountPath}
+
+		got, err := usecase.GetAccountBalance(context.Background(), input)
 		assert.Empty(t, got)
 		assert.ErrorIs(t, err, app.ErrAccountNotFound)
 	})
@@ -67,7 +73,9 @@ func TestLedgerUseCase_GetAccountBalance_Synthetic(t *testing.T) {
 		nr, _ := newrelic.NewApplication()
 		usecase := NewLedgerUseCase(mockedRepository, instrumentators.NewLedgerInstrumentator(nr))
 
-		got, err := usecase.GetAccountBalance(context.Background(), account)
+		input := domain.GetAccountBalanceInput{Account: account}
+
+		got, err := usecase.GetAccountBalance(context.Background(), input)
 		assert.NoError(t, err)
 		assert.Equal(t, queryBalance.Balance, got.Balance)
 	})
@@ -85,8 +93,37 @@ func TestLedgerUseCase_GetAccountBalance_Synthetic(t *testing.T) {
 		nr, _ := newrelic.NewApplication()
 		usecase := NewLedgerUseCase(mockedRepository, instrumentators.NewLedgerInstrumentator(nr))
 
-		got, err := usecase.GetAccountBalance(context.Background(), query)
+		input := domain.GetAccountBalanceInput{Account: query}
+
+		got, err := usecase.GetAccountBalance(context.Background(), input)
 		assert.Empty(t, got)
 		assert.ErrorIs(t, err, app.ErrAccountNotFound)
+	})
+}
+
+func TestLedgerUseCase_GetAccountBalance_Bounded(t *testing.T) {
+	t.Run("should return bounded balance successfully", func(t *testing.T) {
+		account, err := vos.NewAccount("liability.stone.clients.*")
+		assert.NoError(t, err)
+
+		queryBalance := vos.NewSyntheticAccountBalance(account, 20)
+		mockedRepository := &mocks.RepositoryMock{
+			GetBoundedAccountBalanceFunc: func(_ context.Context, _ vos.Account, _, _ time.Time) (vos.AccountBalance, error) {
+				return queryBalance, nil
+			},
+		}
+
+		nr, _ := newrelic.NewApplication()
+		usecase := NewLedgerUseCase(mockedRepository, instrumentators.NewLedgerInstrumentator(nr))
+
+		input := domain.GetAccountBalanceInput{
+			Account:   account,
+			StartDate: time.Now(),
+			EndDate:   time.Now(),
+		}
+
+		got, err := usecase.GetAccountBalance(context.Background(), input)
+		assert.NoError(t, err)
+		assert.Equal(t, queryBalance.Balance, got.Balance)
 	})
 }

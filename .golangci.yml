@@ -36,6 +36,13 @@ linters:
     - unconvert
     - errcheck
 
+issues:
+  exclude-rules:
+    - path: app/domain/vos/account.go
+      source: "conciliateCredit"
+      linters:
+        - gosec
+
 output:
   format: 'colored-line-number'
   print-issued-lines: true

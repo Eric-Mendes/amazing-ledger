@@ -29,6 +29,9 @@ var _ domain.Repository = &RepositoryMock{}
 // 			GetAnalyticAccountBalanceFunc: func(contextMoqParam context.Context, account vos.Account) (vos.AccountBalance, error) {
 // 				panic("mock out the GetAnalyticAccountBalance method")
 // 			},
+// 			GetBoundedAccountBalanceFunc: func(contextMoqParam context.Context, account vos.Account, timeMoqParam1 time.Time, timeMoqParam2 time.Time) (vos.AccountBalance, error) {
+// 				panic("mock out the GetBoundedAccountBalance method")
+// 			},
 // 			GetSyntheticAccountBalanceFunc: func(contextMoqParam context.Context, account vos.Account) (vos.AccountBalance, error) {
 // 				panic("mock out the GetSyntheticAccountBalance method")
 // 			},
@@ -50,6 +53,9 @@ type RepositoryMock struct {
 
 	// GetAnalyticAccountBalanceFunc mocks the GetAnalyticAccountBalance method.
 	GetAnalyticAccountBalanceFunc func(contextMoqParam context.Context, account vos.Account) (vos.AccountBalance, error)
+
+	// GetBoundedAccountBalanceFunc mocks the GetBoundedAccountBalance method.
+	GetBoundedAccountBalanceFunc func(contextMoqParam context.Context, account vos.Account, timeMoqParam1 time.Time, timeMoqParam2 time.Time) (vos.AccountBalance, error)
 
 	// GetSyntheticAccountBalanceFunc mocks the GetSyntheticAccountBalance method.
 	GetSyntheticAccountBalanceFunc func(contextMoqParam context.Context, account vos.Account) (vos.AccountBalance, error)
@@ -75,6 +81,17 @@ type RepositoryMock struct {
 			ContextMoqParam context.Context
 			// Account is the account argument value.
 			Account vos.Account
+		}
+		// GetBoundedAccountBalance holds details about calls to the GetBoundedAccountBalance method.
+		GetBoundedAccountBalance []struct {
+			// ContextMoqParam is the contextMoqParam argument value.
+			ContextMoqParam context.Context
+			// Account is the account argument value.
+			Account vos.Account
+			// TimeMoqParam1 is the timeMoqParam1 argument value.
+			TimeMoqParam1 time.Time
+			// TimeMoqParam2 is the timeMoqParam2 argument value.
+			TimeMoqParam2 time.Time
 		}
 		// GetSyntheticAccountBalance holds details about calls to the GetSyntheticAccountBalance method.
 		GetSyntheticAccountBalance []struct {
@@ -106,6 +123,7 @@ type RepositoryMock struct {
 	}
 	lockCreateTransaction          sync.RWMutex
 	lockGetAnalyticAccountBalance  sync.RWMutex
+	lockGetBoundedAccountBalance   sync.RWMutex
 	lockGetSyntheticAccountBalance sync.RWMutex
 	lockGetSyntheticReport         sync.RWMutex
 	lockListAccountEntries         sync.RWMutex
@@ -178,6 +196,49 @@ func (mock *RepositoryMock) GetAnalyticAccountBalanceCalls() []struct {
 	mock.lockGetAnalyticAccountBalance.RLock()
 	calls = mock.calls.GetAnalyticAccountBalance
 	mock.lockGetAnalyticAccountBalance.RUnlock()
+	return calls
+}
+
+// GetBoundedAccountBalance calls GetBoundedAccountBalanceFunc.
+func (mock *RepositoryMock) GetBoundedAccountBalance(contextMoqParam context.Context, account vos.Account, timeMoqParam1 time.Time, timeMoqParam2 time.Time) (vos.AccountBalance, error) {
+	if mock.GetBoundedAccountBalanceFunc == nil {
+		panic("RepositoryMock.GetBoundedAccountBalanceFunc: method is nil but Repository.GetBoundedAccountBalance was just called")
+	}
+	callInfo := struct {
+		ContextMoqParam context.Context
+		Account         vos.Account
+		TimeMoqParam1   time.Time
+		TimeMoqParam2   time.Time
+	}{
+		ContextMoqParam: contextMoqParam,
+		Account:         account,
+		TimeMoqParam1:   timeMoqParam1,
+		TimeMoqParam2:   timeMoqParam2,
+	}
+	mock.lockGetBoundedAccountBalance.Lock()
+	mock.calls.GetBoundedAccountBalance = append(mock.calls.GetBoundedAccountBalance, callInfo)
+	mock.lockGetBoundedAccountBalance.Unlock()
+	return mock.GetBoundedAccountBalanceFunc(contextMoqParam, account, timeMoqParam1, timeMoqParam2)
+}
+
+// GetBoundedAccountBalanceCalls gets all the calls that were made to GetBoundedAccountBalance.
+// Check the length with:
+//     len(mockedRepository.GetBoundedAccountBalanceCalls())
+func (mock *RepositoryMock) GetBoundedAccountBalanceCalls() []struct {
+	ContextMoqParam context.Context
+	Account         vos.Account
+	TimeMoqParam1   time.Time
+	TimeMoqParam2   time.Time
+} {
+	var calls []struct {
+		ContextMoqParam context.Context
+		Account         vos.Account
+		TimeMoqParam1   time.Time
+		TimeMoqParam2   time.Time
+	}
+	mock.lockGetBoundedAccountBalance.RLock()
+	calls = mock.calls.GetBoundedAccountBalance
+	mock.lockGetBoundedAccountBalance.RUnlock()
 	return calls
 }
 

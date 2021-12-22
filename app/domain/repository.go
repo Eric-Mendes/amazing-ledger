@@ -11,6 +11,7 @@ import (
 
 type Repository interface {
 	CreateTransaction(context.Context, entities.Transaction) error
+	GetBoundedAccountBalance(context.Context, vos.Account, time.Time, time.Time) (vos.AccountBalance, error)
 	GetAnalyticAccountBalance(context.Context, vos.Account) (vos.AccountBalance, error)
 	GetSyntheticAccountBalance(context.Context, vos.Account) (vos.AccountBalance, error)
 	GetSyntheticReport(context.Context, vos.Account, int, time.Time, time.Time) (*vos.SyntheticReport, error)

@@ -25,7 +25,7 @@ var _ domain.UseCase = &UseCaseMock{}
 // 			CreateTransactionFunc: func(contextMoqParam context.Context, transaction entities.Transaction) error {
 // 				panic("mock out the CreateTransaction method")
 // 			},
-// 			GetAccountBalanceFunc: func(contextMoqParam context.Context, account vos.Account) (vos.AccountBalance, error) {
+// 			GetAccountBalanceFunc: func(contextMoqParam context.Context, getAccountBalanceInput domain.GetAccountBalanceInput) (vos.AccountBalance, error) {
 // 				panic("mock out the GetAccountBalance method")
 // 			},
 // 			GetSyntheticReportFunc: func(contextMoqParam context.Context, account vos.Account, n int, timeMoqParam1 time.Time, timeMoqParam2 time.Time) (*vos.SyntheticReport, error) {
@@ -45,7 +45,7 @@ type UseCaseMock struct {
 	CreateTransactionFunc func(contextMoqParam context.Context, transaction entities.Transaction) error
 
 	// GetAccountBalanceFunc mocks the GetAccountBalance method.
-	GetAccountBalanceFunc func(contextMoqParam context.Context, account vos.Account) (vos.AccountBalance, error)
+	GetAccountBalanceFunc func(contextMoqParam context.Context, getAccountBalanceInput domain.GetAccountBalanceInput) (vos.AccountBalance, error)
 
 	// GetSyntheticReportFunc mocks the GetSyntheticReport method.
 	GetSyntheticReportFunc func(contextMoqParam context.Context, account vos.Account, n int, timeMoqParam1 time.Time, timeMoqParam2 time.Time) (*vos.SyntheticReport, error)
@@ -66,8 +66,8 @@ type UseCaseMock struct {
 		GetAccountBalance []struct {
 			// ContextMoqParam is the contextMoqParam argument value.
 			ContextMoqParam context.Context
-			// Account is the account argument value.
-			Account vos.Account
+			// GetAccountBalanceInput is the getAccountBalanceInput argument value.
+			GetAccountBalanceInput domain.GetAccountBalanceInput
 		}
 		// GetSyntheticReport holds details about calls to the GetSyntheticReport method.
 		GetSyntheticReport []struct {
@@ -132,33 +132,33 @@ func (mock *UseCaseMock) CreateTransactionCalls() []struct {
 }
 
 // GetAccountBalance calls GetAccountBalanceFunc.
-func (mock *UseCaseMock) GetAccountBalance(contextMoqParam context.Context, account vos.Account) (vos.AccountBalance, error) {
+func (mock *UseCaseMock) GetAccountBalance(contextMoqParam context.Context, getAccountBalanceInput domain.GetAccountBalanceInput) (vos.AccountBalance, error) {
 	if mock.GetAccountBalanceFunc == nil {
 		panic("UseCaseMock.GetAccountBalanceFunc: method is nil but UseCase.GetAccountBalance was just called")
 	}
 	callInfo := struct {
-		ContextMoqParam context.Context
-		Account         vos.Account
+		ContextMoqParam        context.Context
+		GetAccountBalanceInput domain.GetAccountBalanceInput
 	}{
-		ContextMoqParam: contextMoqParam,
-		Account:         account,
+		ContextMoqParam:        contextMoqParam,
+		GetAccountBalanceInput: getAccountBalanceInput,
 	}
 	mock.lockGetAccountBalance.Lock()
 	mock.calls.GetAccountBalance = append(mock.calls.GetAccountBalance, callInfo)
 	mock.lockGetAccountBalance.Unlock()
-	return mock.GetAccountBalanceFunc(contextMoqParam, account)
+	return mock.GetAccountBalanceFunc(contextMoqParam, getAccountBalanceInput)
 }
 
 // GetAccountBalanceCalls gets all the calls that were made to GetAccountBalance.
 // Check the length with:
 //     len(mockedUseCase.GetAccountBalanceCalls())
 func (mock *UseCaseMock) GetAccountBalanceCalls() []struct {
-	ContextMoqParam context.Context
-	Account         vos.Account
+	ContextMoqParam        context.Context
+	GetAccountBalanceInput domain.GetAccountBalanceInput
 } {
 	var calls []struct {
-		ContextMoqParam context.Context
-		Account         vos.Account
+		ContextMoqParam        context.Context
+		GetAccountBalanceInput domain.GetAccountBalanceInput
 	}
 	mock.lockGetAccountBalance.RLock()
 	calls = mock.calls.GetAccountBalance

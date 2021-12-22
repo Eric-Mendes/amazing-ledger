@@ -101,7 +101,7 @@ func TestE2E_RPC_GetAccountBalanceFailure(t *testing.T) {
 			name:         "should return an error if account does not exist",
 			account:      testdata.GenerateAccountPath(),
 			expectedCode: codes.NotFound,
-			expectedMsg:  "failed to get account balance: account not found",
+			expectedMsg:  "get account balance: account not found",
 		},
 		{
 			name:         "should return an error if account path is invalid",
