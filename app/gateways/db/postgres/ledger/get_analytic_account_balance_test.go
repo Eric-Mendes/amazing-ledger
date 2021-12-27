@@ -1,4 +1,4 @@
-package postgres
+package ledger
 
 import (
 	"context"
@@ -8,16 +8,18 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/stone-co/the-amazing-ledger/app/tests/pgtesting"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stone-co/the-amazing-ledger/app"
 	"github.com/stone-co/the-amazing-ledger/app/domain/instrumentators"
 	"github.com/stone-co/the-amazing-ledger/app/domain/vos"
-	"github.com/stone-co/the-amazing-ledger/app/tests"
 	"github.com/stone-co/the-amazing-ledger/app/tests/testdata"
 )
 
 func TestLedgerRepository_GetAccountBalanceSuccess(t *testing.T) {
+	t.Parallel()
+
 	acc1, err := vos.NewAnalyticAccount(testdata.GenerateAccountPath())
 	assert.NoError(t, err)
 
@@ -37,12 +39,12 @@ func TestLedgerRepository_GetAccountBalanceSuccess(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		repoSeed func(t *testing.T, ctx context.Context, r *LedgerRepository)
+		repoSeed func(t *testing.T, ctx context.Context, r *Repository)
 		wants    wants
 	}{
 		{
 			name: "should get account balance successfully when is the first request",
-			repoSeed: func(t *testing.T, ctx context.Context, r *LedgerRepository) {
+			repoSeed: func(t *testing.T, ctx context.Context, r *Repository) {
 				e1 := createEntry(t, vos.DebitOperation, acc1.Value(), vos.NextAccountVersion, 100)
 				e2 := createEntry(t, vos.CreditOperation, acc2.Value(), vos.NextAccountVersion, 100)
 
@@ -58,7 +60,7 @@ func TestLedgerRepository_GetAccountBalanceSuccess(t *testing.T) {
 		},
 		{
 			name: "should get account balance successfully when is the second request",
-			repoSeed: func(t *testing.T, ctx context.Context, r *LedgerRepository) {
+			repoSeed: func(t *testing.T, ctx context.Context, r *Repository) {
 				e1 := createEntry(t, vos.DebitOperation, acc1.Value(), vos.NextAccountVersion, 100)
 				e2 := createEntry(t, vos.CreditOperation, acc2.Value(), vos.NextAccountVersion, 100)
 				createTransaction(t, ctx, r, e1, e2)
@@ -80,7 +82,7 @@ func TestLedgerRepository_GetAccountBalanceSuccess(t *testing.T) {
 		},
 		{
 			name: "should get account balance successfully when is the third request",
-			repoSeed: func(t *testing.T, ctx context.Context, r *LedgerRepository) {
+			repoSeed: func(t *testing.T, ctx context.Context, r *Repository) {
 				e1 := createEntry(t, vos.DebitOperation, acc1.Value(), vos.NextAccountVersion, 100)
 				e2 := createEntry(t, vos.CreditOperation, acc2.Value(), vos.NextAccountVersion, 100)
 				createTransaction(t, ctx, r, e1, e2)
@@ -107,13 +109,16 @@ func TestLedgerRepository_GetAccountBalanceSuccess(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := newDB(t, tt.name)
+
 			ctx := context.Background()
-			r := NewLedgerRepository(pgDocker.DB, &instrumentators.LedgerInstrumentator{})
+			r := NewRepository(db, &instrumentators.LedgerInstrumentator{})
 
 			tt.repoSeed(t, ctx, r)
-
-			defer tests.TruncateTables(ctx, pgDocker.DB, "entry", "account_version", "account_balance")
 
 			balance, err := r.GetAnalyticAccountBalance(ctx, acc1)
 			assert.NoError(t, err)
@@ -124,17 +129,17 @@ func TestLedgerRepository_GetAccountBalanceSuccess(t *testing.T) {
 			assert.Equal(t, tt.wants.total.acc2balance, balance.Balance)
 
 			if tt.wants.snapErr != nil {
-				_, err = fetchSnapshot(ctx, pgDocker.DB, acc1)
+				_, err = fetchSnapshot(ctx, db, acc1)
 				assert.ErrorIs(t, err, tt.wants.snapErr)
 
-				_, err = fetchSnapshot(ctx, pgDocker.DB, acc2)
+				_, err = fetchSnapshot(ctx, db, acc2)
 				assert.ErrorIs(t, err, tt.wants.snapErr)
 			} else {
-				snap, err := fetchSnapshot(ctx, pgDocker.DB, acc1)
+				snap, err := fetchSnapshot(ctx, db, acc1)
 				assert.NoError(t, err)
 				assert.Equal(t, tt.wants.snapshot.acc1Balance, snap.balance)
 
-				snap, err = fetchSnapshot(ctx, pgDocker.DB, acc2)
+				snap, err = fetchSnapshot(ctx, db, acc2)
 				assert.NoError(t, err)
 				assert.Equal(t, tt.wants.snapshot.acc2balance, snap.balance)
 			}
@@ -143,15 +148,17 @@ func TestLedgerRepository_GetAccountBalanceSuccess(t *testing.T) {
 }
 
 func TestLedgerRepository_GetAccountBalanceFailure(t *testing.T) {
-	t.Run("should return an error if account does not exist", func(t *testing.T) {
-		r := NewLedgerRepository(pgDocker.DB, &instrumentators.LedgerInstrumentator{})
+	t.Parallel()
 
-		acc, err := vos.NewAnalyticAccount(testdata.GenerateAccountPath())
-		assert.NoError(t, err)
+	db := pgtesting.NewDB(t, t.Name())
 
-		_, err = r.GetAnalyticAccountBalance(context.Background(), acc)
-		assert.ErrorIs(t, app.ErrAccountNotFound, err)
-	})
+	r := NewRepository(db, &instrumentators.LedgerInstrumentator{})
+
+	acc, err := vos.NewAnalyticAccount(testdata.GenerateAccountPath())
+	assert.NoError(t, err)
+
+	_, err = r.GetAnalyticAccountBalance(context.Background(), acc)
+	assert.ErrorIs(t, app.ErrAccountNotFound, err)
 }
 
 type snapshot struct {

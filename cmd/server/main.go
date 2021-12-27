@@ -11,6 +11,8 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/sirupsen/logrus"
+	"github.com/stone-co/the-amazing-ledger/app/gateways/db/postgres/ledger"
+	"github.com/stone-co/the-amazing-ledger/app/gateways/db/postgres/migrations"
 
 	"github.com/stone-co/the-amazing-ledger/app"
 	"github.com/stone-co/the-amazing-ledger/app/domain/instrumentators"
@@ -41,7 +43,10 @@ func main() {
 
 	ledgerInstrumentator := instrumentators.NewLedgerInstrumentator(nr)
 
-	conn, err := postgres.ConnectPool(cfg.Postgres.DSN(), zerolog.New(os.Stderr))
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+
+	conn, err := postgres.ConnectPool(ctx, cfg.Postgres.DSN(), zerolog.New(os.Stderr))
 	if err != nil {
 		logger.Panic().Err(err).Msg("failed to connect to database")
 	}
@@ -49,7 +54,7 @@ func main() {
 	defer conn.Close()
 
 	logger.Info().Msg("running migrations")
-	if err = postgres.RunMigrations(cfg.Postgres.URL()); err != nil {
+	if err = migrations.RunMigrations(cfg.Postgres.URL()); err != nil {
 		logger.Panic().Err(err).Msg("failed to run database migrations")
 	}
 
@@ -58,11 +63,8 @@ func main() {
 		logger.Panic().Err(err).Msg("failed to listen")
 	}
 
-	ledgerRepository := postgres.NewLedgerRepository(conn, ledgerInstrumentator)
+	ledgerRepository := ledger.NewRepository(conn, ledgerInstrumentator)
 	ledgerUseCase := usecases.NewLedgerUseCase(ledgerRepository, ledgerInstrumentator)
-
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
 
 	rpcServer, gwServer, err := rpc.NewServer(ctx, ledgerUseCase, nr, cfg, BuildGitCommit, BuildTime)
 	if err != nil {

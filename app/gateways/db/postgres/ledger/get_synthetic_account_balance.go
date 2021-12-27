@@ -1,4 +1,4 @@
-package postgres
+package ledger
 
 import (
 	"context"
@@ -17,7 +17,7 @@ const queryAggregatedBalanceQuery = `
 select get_synthetic_account_balance($1);
 `
 
-func (r LedgerRepository) GetSyntheticAccountBalance(ctx context.Context, account vos.Account) (vos.AccountBalance, error) {
+func (r Repository) GetSyntheticAccountBalance(ctx context.Context, account vos.Account) (vos.AccountBalance, error) {
 	const operation = "Repository.GetSyntheticAccountBalance"
 
 	defer newrelic.NewDatastoreSegment(ctx, collection, operation, queryAggregatedBalanceQuery).End()

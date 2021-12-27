@@ -1,4 +1,4 @@
-package postgres
+package ledger
 
 import (
 	"context"
@@ -29,7 +29,7 @@ const _boundedBalanceQueryEndFilter = `
    and competence_date <  $%d
 `
 
-func (r LedgerRepository) GetBoundedAccountBalance(ctx context.Context, acc vos.Account, start, end time.Time) (vos.AccountBalance, error) {
+func (r Repository) GetBoundedAccountBalance(ctx context.Context, acc vos.Account, start, end time.Time) (vos.AccountBalance, error) {
 	const operation = "Repository.GetBoundedAccountBalance"
 
 	query, args := buildBoundedBalanceQuery(acc, start, end)

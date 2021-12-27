@@ -1,4 +1,4 @@
-package postgres
+package ledger
 
 import (
 	"context"
@@ -11,12 +11,15 @@ import (
 	"github.com/stone-co/the-amazing-ledger/app/domain/entities"
 	"github.com/stone-co/the-amazing-ledger/app/domain/instrumentators"
 	"github.com/stone-co/the-amazing-ledger/app/domain/vos"
-	"github.com/stone-co/the-amazing-ledger/app/tests"
 )
 
 func TestLedgerRepository_QueryBoundedBalance(t *testing.T) {
+	t.Parallel()
+
+	db := newDB(t, t.Name())
+
 	ctx := context.Background()
-	r := NewLedgerRepository(pgDocker.DB, &instrumentators.LedgerInstrumentator{})
+	r := NewRepository(db, &instrumentators.LedgerInstrumentator{})
 
 	acc1, err := vos.NewAccount("liability.agg.agg1")
 	assert.NoError(t, err)
@@ -38,8 +41,6 @@ func TestLedgerRepository_QueryBoundedBalance(t *testing.T) {
 	e2 = createEntry(t, vos.CreditOperation, acc2.Value(), vos.NextAccountVersion, 100)
 	e3 := createEntry(t, vos.DebitOperation, acc3.Value(), vos.IgnoreAccountVersion, 300)
 	createTransactionWithDate(t, ctx, r, time.Now().Add(-24*time.Hour), e1, e2, e3)
-
-	defer tests.TruncateTables(ctx, pgDocker.DB, "entry", "account_version", "account_balance")
 
 	testCases := []struct {
 		name    string
@@ -77,7 +78,10 @@ func TestLedgerRepository_QueryBoundedBalance(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			balance, err := r.GetBoundedAccountBalance(ctx, tt.account, tt.start, tt.end)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wants, balance.Balance)
@@ -85,7 +89,7 @@ func TestLedgerRepository_QueryBoundedBalance(t *testing.T) {
 	}
 }
 
-func createTransactionWithDate(t *testing.T, ctx context.Context, r *LedgerRepository, dt time.Time, entries ...entities.Entry) entities.Transaction {
+func createTransactionWithDate(t *testing.T, ctx context.Context, r *Repository, dt time.Time, entries ...entities.Entry) entities.Transaction {
 	t.Helper()
 
 	tx, err := entities.NewTransaction(

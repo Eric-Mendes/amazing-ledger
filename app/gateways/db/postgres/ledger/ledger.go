@@ -1,4 +1,4 @@
-package postgres
+package ledger
 
 import (
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -8,23 +8,21 @@ import (
 	"github.com/stone-co/the-amazing-ledger/app/gateways/db/querybuilder"
 )
 
-const (
-	collection = "entry"
-)
+const collection = "entry"
 
-var _ domain.Repository = &LedgerRepository{}
+var _ domain.Repository = &Repository{}
 
-type LedgerRepository struct {
+type Repository struct {
 	db *pgxpool.Pool
 	pb *instrumentators.LedgerInstrumentator
 	qb querybuilder.QueryBuilder
 }
 
-func NewLedgerRepository(db *pgxpool.Pool, pb *instrumentators.LedgerInstrumentator) *LedgerRepository {
+func NewRepository(db *pgxpool.Pool, pb *instrumentators.LedgerInstrumentator) *Repository {
 	qb := querybuilder.New(createTransactionQuery, numArgs)
 	qb.Init(numDefaultQueries)
 
-	return &LedgerRepository{
+	return &Repository{
 		db: db,
 		pb: pb,
 		qb: qb,

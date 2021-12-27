@@ -1,4 +1,4 @@
-package postgres
+package ledger
 
 import (
 	"context"
@@ -17,20 +17,21 @@ import (
 	"github.com/stone-co/the-amazing-ledger/app/domain/entities"
 	"github.com/stone-co/the-amazing-ledger/app/domain/instrumentators"
 	"github.com/stone-co/the-amazing-ledger/app/domain/vos"
-	"github.com/stone-co/the-amazing-ledger/app/tests"
 )
 
 func TestLedgerRepository_CreateTransactionSuccess(t *testing.T) {
+	t.Parallel()
+
 	testCases := []struct {
 		name                   string
-		repoSeed               func(t *testing.T, ctx context.Context, r *LedgerRepository)
+		repoSeed               func(t *testing.T, ctx context.Context, r *Repository)
 		entriesSetup           func(t *testing.T) []entities.Entry
 		expectedEntryVersion   vos.Version
 		expectedAccountVersion vos.Version
 	}{
 		{
 			name:     "insert transaction successfully with no previous versions - auto version",
-			repoSeed: func(t *testing.T, ctx context.Context, r *LedgerRepository) {},
+			repoSeed: func(t *testing.T, ctx context.Context, r *Repository) {},
 			entriesSetup: func(t *testing.T) []entities.Entry {
 				e1 := createEntry(t, vos.DebitOperation, "liability.abc.account1", vos.NextAccountVersion, 100)
 				e2 := createEntry(t, vos.CreditOperation, "liability.abc.account2", vos.IgnoreAccountVersion, 100)
@@ -42,7 +43,7 @@ func TestLedgerRepository_CreateTransactionSuccess(t *testing.T) {
 		},
 		{
 			name:     "insert transaction successfully with no previous versions - manual version",
-			repoSeed: func(t *testing.T, ctx context.Context, r *LedgerRepository) {},
+			repoSeed: func(t *testing.T, ctx context.Context, r *Repository) {},
 			entriesSetup: func(t *testing.T) []entities.Entry {
 				e1 := createEntry(t, vos.DebitOperation, "liability.abc.account1", vos.Version(1), 100)
 				e2 := createEntry(t, vos.CreditOperation, "liability.abc.account2", vos.IgnoreAccountVersion, 100)
@@ -54,7 +55,7 @@ func TestLedgerRepository_CreateTransactionSuccess(t *testing.T) {
 		},
 		{
 			name: "insert transaction successfully with existing versions - auto version",
-			repoSeed: func(t *testing.T, ctx context.Context, r *LedgerRepository) {
+			repoSeed: func(t *testing.T, ctx context.Context, r *Repository) {
 				e1 := createEntry(t, vos.DebitOperation, "liability.abc.account1", vos.NextAccountVersion, 100)
 				e2 := createEntry(t, vos.CreditOperation, "liability.abc.account2", vos.IgnoreAccountVersion, 100)
 
@@ -71,7 +72,7 @@ func TestLedgerRepository_CreateTransactionSuccess(t *testing.T) {
 		},
 		{
 			name: "insert transaction successfully with existing versions - manual version",
-			repoSeed: func(t *testing.T, ctx context.Context, r *LedgerRepository) {
+			repoSeed: func(t *testing.T, ctx context.Context, r *Repository) {
 				e1 := createEntry(t, vos.DebitOperation, "liability.abc.account1", vos.NextAccountVersion, 100)
 				e2 := createEntry(t, vos.CreditOperation, "liability.abc.account2", vos.IgnoreAccountVersion, 100)
 
@@ -88,7 +89,7 @@ func TestLedgerRepository_CreateTransactionSuccess(t *testing.T) {
 		},
 		{
 			name: "insert transaction successfully with existing versions - unsorted and manual version",
-			repoSeed: func(t *testing.T, ctx context.Context, r *LedgerRepository) {
+			repoSeed: func(t *testing.T, ctx context.Context, r *Repository) {
 				e1 := createEntry(t, vos.DebitOperation, "liability.abc.account1", vos.NextAccountVersion, 100)
 				e2 := createEntry(t, vos.CreditOperation, "liability.abc.account2", vos.IgnoreAccountVersion, 100)
 
@@ -108,11 +109,14 @@ func TestLedgerRepository_CreateTransactionSuccess(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			r := NewLedgerRepository(pgDocker.DB, &instrumentators.LedgerInstrumentator{})
+			t.Parallel()
 
-			defer tests.TruncateTables(ctx, pgDocker.DB, "entry", "account_version")
+			db := newDB(t, tt.name)
+
+			ctx := context.Background()
+			r := NewRepository(db, &instrumentators.LedgerInstrumentator{})
 
 			tt.repoSeed(t, ctx, r)
 
@@ -125,32 +129,34 @@ func TestLedgerRepository_CreateTransactionSuccess(t *testing.T) {
 			err = r.CreateTransaction(ctx, tx)
 			assert.NoError(t, err)
 
-			assertMetadata(t, ctx, pgDocker.DB, e1.ID, e1.Metadata)
-			assertMetadata(t, ctx, pgDocker.DB, e2.ID, e2.Metadata)
+			assertMetadata(t, ctx, db, e1.ID, e1.Metadata)
+			assertMetadata(t, ctx, db, e2.ID, e2.Metadata)
 
-			assertEntryVersion(t, ctx, pgDocker.DB, e1.ID, tt.expectedEntryVersion)
-			assertEntryVersion(t, ctx, pgDocker.DB, e2.ID, vos.IgnoreAccountVersion)
+			assertEntryVersion(t, ctx, db, e1.ID, tt.expectedEntryVersion)
+			assertEntryVersion(t, ctx, db, e2.ID, vos.IgnoreAccountVersion)
 
-			assertAccountVersion(t, ctx, pgDocker.DB, e1.Account, tt.expectedAccountVersion)
-			assertAccountVersion(t, ctx, pgDocker.DB, e2.Account, vos.Version(0))
+			assertAccountVersion(t, ctx, db, e1.Account, tt.expectedAccountVersion)
+			assertAccountVersion(t, ctx, db, e2.Account, vos.Version(0))
 		})
 	}
 }
 
 func TestLedgerRepository_CreateTransactionFailure(t *testing.T) {
+	t.Parallel()
+
 	e1 := createEntry(t, vos.DebitOperation, "liability.abc.account1", vos.NextAccountVersion, 100)
 	e2 := createEntry(t, vos.CreditOperation, "liability.abc.account2", vos.IgnoreAccountVersion, 100)
 
 	testCases := []struct {
 		name                   string
-		repoSeed               func(t *testing.T, ctx context.Context, r *LedgerRepository)
+		repoSeed               func(t *testing.T, ctx context.Context, r *Repository)
 		entriesSetup           func(t *testing.T) []entities.Entry
 		expectedErr            error
 		expectedAccountVersion vos.Version
 	}{
 		{
-			name: "return error when sending same version",
-			repoSeed: func(t *testing.T, ctx context.Context, r *LedgerRepository) {
+			name: "same version",
+			repoSeed: func(t *testing.T, ctx context.Context, r *Repository) {
 				createTransaction(t, ctx, r, e1, e2)
 			},
 			entriesSetup: func(t *testing.T) []entities.Entry {
@@ -163,8 +169,8 @@ func TestLedgerRepository_CreateTransactionFailure(t *testing.T) {
 			expectedAccountVersion: vos.Version(1),
 		},
 		{
-			name: "return error when sending lower version",
-			repoSeed: func(t *testing.T, ctx context.Context, r *LedgerRepository) {
+			name: "lower version",
+			repoSeed: func(t *testing.T, ctx context.Context, r *Repository) {
 				createTransaction(t, ctx, r, e1, e2)
 
 				e3 := createEntry(t, vos.DebitOperation, "liability.abc.account1", vos.NextAccountVersion, 100)
@@ -182,8 +188,8 @@ func TestLedgerRepository_CreateTransactionFailure(t *testing.T) {
 			expectedAccountVersion: vos.Version(2),
 		},
 		{
-			name: "return error when sending random high version",
-			repoSeed: func(t *testing.T, ctx context.Context, r *LedgerRepository) {
+			name: "random high version",
+			repoSeed: func(t *testing.T, ctx context.Context, r *Repository) {
 				createTransaction(t, ctx, r, e1, e2)
 			},
 			entriesSetup: func(t *testing.T) []entities.Entry {
@@ -196,8 +202,8 @@ func TestLedgerRepository_CreateTransactionFailure(t *testing.T) {
 			expectedAccountVersion: vos.Version(1),
 		},
 		{
-			name: "return error when reusing entry id",
-			repoSeed: func(t *testing.T, ctx context.Context, r *LedgerRepository) {
+			name: "reusing entry id",
+			repoSeed: func(t *testing.T, ctx context.Context, r *Repository) {
 				createTransaction(t, ctx, r, e1, e2)
 			},
 			entriesSetup: func(t *testing.T) []entities.Entry {
@@ -209,11 +215,14 @@ func TestLedgerRepository_CreateTransactionFailure(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			r := NewLedgerRepository(pgDocker.DB, &instrumentators.LedgerInstrumentator{})
+			t.Parallel()
 
-			defer tests.TruncateTables(ctx, pgDocker.DB, "entry", "account_version")
+			db := newDB(t, t.Name())
+
+			ctx := context.Background()
+			r := NewRepository(db, &instrumentators.LedgerInstrumentator{})
 
 			tt.repoSeed(t, ctx, r)
 
@@ -226,8 +235,8 @@ func TestLedgerRepository_CreateTransactionFailure(t *testing.T) {
 			err = r.CreateTransaction(ctx, tx)
 			assert.ErrorIs(t, err, tt.expectedErr)
 
-			assertAccountVersion(t, ctx, pgDocker.DB, e1.Account, tt.expectedAccountVersion)
-			assertAccountVersion(t, ctx, pgDocker.DB, e2.Account, vos.Version(0))
+			assertAccountVersion(t, ctx, db, e1.Account, tt.expectedAccountVersion)
+			assertAccountVersion(t, ctx, db, e2.Account, vos.Version(0))
 		})
 	}
 }

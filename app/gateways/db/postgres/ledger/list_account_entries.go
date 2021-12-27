@@ -1,4 +1,4 @@
-package postgres
+package ledger
 
 import (
 	"context"
@@ -66,7 +66,7 @@ type listAccountEntriesCursor struct {
 	Version        int64     `json:"version"`
 }
 
-func (r LedgerRepository) ListAccountEntries(ctx context.Context, req vos.AccountEntryRequest) ([]vos.AccountEntry, pag.Cursor, error) {
+func (r Repository) ListAccountEntries(ctx context.Context, req vos.AccountEntryRequest) ([]vos.AccountEntry, pag.Cursor, error) {
 	const op = "Repository.ListAccountEntries"
 
 	query, args, err := generateListAccountEntriesQuery(req)

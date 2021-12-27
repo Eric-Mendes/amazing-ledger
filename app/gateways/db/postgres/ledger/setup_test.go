@@ -1,36 +1,47 @@
-package postgres
+package ledger
 
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/stone-co/the-amazing-ledger/app/tests/pgtesting"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/stone-co/the-amazing-ledger/app/domain/entities"
 	"github.com/stone-co/the-amazing-ledger/app/domain/vos"
-	"github.com/stone-co/the-amazing-ledger/app/tests"
 )
 
-var pgDocker *tests.PostgresDocker
-
 func TestMain(m *testing.M) {
-	pgDocker = tests.SetupTest("./migrations")
+	os.Exit(testMain(m))
+}
 
-	_, err := pgDocker.DB.Exec(context.Background(), `insert into event (id, name) values (1, 'default'), (2, 'new');`)
+func testMain(m *testing.M) int {
+	_, teardown, err := pgtesting.StartDockerContainer(pgtesting.DockerContainerConfig{
+		DBName:  "ledger_test_database",
+		Version: "13-alpine",
+	})
 	if err != nil {
-		log.Fatalf("could not insert default event values: %v", err)
+		return 1
 	}
 
-	exitCode := m.Run()
+	defer teardown()
 
-	tests.RemoveContainer(pgDocker)
+	return m.Run()
+}
 
-	os.Exit(exitCode)
+func newDB(t *testing.T, name string) *pgxpool.Pool {
+	pool := pgtesting.NewDB(t, name)
+
+	_, err := pool.Exec(context.Background(), "insert into event (id, name) values (1, 'event_1'), (2, 'event_2');")
+	require.NoError(t, err)
+
+	return pool
 }
 
 func createEntry(t *testing.T, op vos.OperationType, account string, version vos.Version, amount int) entities.Entry {
@@ -49,7 +60,7 @@ func createEntry(t *testing.T, op vos.OperationType, account string, version vos
 	return entry
 }
 
-func createTransaction(t *testing.T, ctx context.Context, r *LedgerRepository, entries ...entities.Entry) entities.Transaction {
+func createTransaction(t *testing.T, ctx context.Context, r *Repository, entries ...entities.Entry) entities.Transaction {
 	t.Helper()
 
 	tx, err := entities.NewTransaction(

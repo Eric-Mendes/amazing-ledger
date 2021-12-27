@@ -64,7 +64,7 @@ clean:
 	@rm -f build/${NAME_COMMAND_HANDLER}
 
 .PHONY: lint
-lint: metalint protolint
+lint: metalint
 
 .PHONY: metalint
 metalint:
@@ -75,12 +75,6 @@ metalint:
 archlint:
 	@echo "==> Running architecture linter(gochk)"
 	gochk -c ./gochk-arch-linter.json
-
-.PHONY: protolint
-protolint:
-	@echo "==> Proto lint: Running protofile linters"
-	@buf lint
-	@buf breaking --against '.git#branch=main'
 
 .PHONY: test-coverage
 test-coverage:

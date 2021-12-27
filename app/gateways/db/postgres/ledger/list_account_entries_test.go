@@ -1,4 +1,4 @@
-package postgres
+package ledger
 
 import (
 	"context"
@@ -15,10 +15,11 @@ import (
 	"github.com/stone-co/the-amazing-ledger/app/domain/instrumentators"
 	"github.com/stone-co/the-amazing-ledger/app/domain/vos"
 	"github.com/stone-co/the-amazing-ledger/app/pagination"
-	"github.com/stone-co/the-amazing-ledger/app/tests"
 )
 
 func Test_generateListAccountEntriesQuery(t *testing.T) {
+	t.Parallel()
+
 	account, err := vos.NewAnalyticAccount("liability.test.account1")
 	assert.NoError(t, err)
 
@@ -286,16 +287,21 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 		},
 	}
 	for _, tt := range testCases {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1, err := generateListAccountEntriesQuery(tt.req())
+			t.Parallel()
+
+			gotQuery, gotArgs, err := generateListAccountEntriesQuery(tt.req())
 			assert.ErrorIs(t, err, tt.expectedErr)
-			assert.Equal(t, tt.expectedQuery, got)
-			assert.EqualValues(t, tt.expectedArgs, got1)
+			assert.Equal(t, tt.expectedQuery, gotQuery)
+			assert.EqualValues(t, tt.expectedArgs, gotArgs)
 		})
 	}
 }
 
 func TestLedgerRepository_ListAccountEntries(t *testing.T) {
+	t.Parallel()
+
 	type w struct {
 		entries []vos.AccountEntry
 		cursor  pagination.Cursor
@@ -310,13 +316,13 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 
 	testCases := []struct {
 		name         string
-		seedRepo     func(*testing.T, context.Context, *LedgerRepository) []entities.Transaction
+		seedRepo     func(*testing.T, context.Context, *Repository) []entities.Transaction
 		setupRequest func(*testing.T, []entities.Transaction) vos.AccountEntryRequest
 		want         func(*testing.T, []entities.Transaction) w
 	}{
 		{
 			name: "no exiting entries case",
-			seedRepo: func(t *testing.T, ctx context.Context, r *LedgerRepository) []entities.Transaction {
+			seedRepo: func(t *testing.T, ctx context.Context, r *Repository) []entities.Transaction {
 				e1 := createEntry(t, vos.DebitOperation, account1, vos.Version(1), amount)
 				e2 := createEntry(t, vos.CreditOperation, account2, vos.IgnoreAccountVersion, amount)
 
@@ -349,7 +355,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 		},
 		{
 			name: "return all entries",
-			seedRepo: func(t *testing.T, ctx context.Context, r *LedgerRepository) []entities.Transaction {
+			seedRepo: func(t *testing.T, ctx context.Context, r *Repository) []entities.Transaction {
 				e1 := createEntry(t, vos.DebitOperation, account1, vos.Version(1), amount)
 				e2 := createEntry(t, vos.CreditOperation, account2, vos.IgnoreAccountVersion, amount)
 
@@ -384,7 +390,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 		},
 		{
 			name: "return entries from all accounts",
-			seedRepo: func(t *testing.T, ctx context.Context, r *LedgerRepository) []entities.Transaction {
+			seedRepo: func(t *testing.T, ctx context.Context, r *Repository) []entities.Transaction {
 				e1 := createEntry(t, vos.DebitOperation, account1, vos.Version(1), amount)
 				e2 := createEntry(t, vos.CreditOperation, account2, vos.IgnoreAccountVersion, amount)
 
@@ -420,7 +426,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 		},
 		{
 			name: "return first page",
-			seedRepo: func(t *testing.T, ctx context.Context, r *LedgerRepository) []entities.Transaction {
+			seedRepo: func(t *testing.T, ctx context.Context, r *Repository) []entities.Transaction {
 				e1 := createEntry(t, vos.DebitOperation, account1, vos.Version(1), amount)
 				e2 := createEntry(t, vos.CreditOperation, account2, vos.IgnoreAccountVersion, amount)
 
@@ -461,7 +467,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 		},
 		{
 			name: "return second page",
-			seedRepo: func(t *testing.T, ctx context.Context, r *LedgerRepository) []entities.Transaction {
+			seedRepo: func(t *testing.T, ctx context.Context, r *Repository) []entities.Transaction {
 				e1 := createEntry(t, vos.DebitOperation, account1, vos.Version(1), amount)
 				e2 := createEntry(t, vos.CreditOperation, account2, vos.IgnoreAccountVersion, amount)
 
@@ -503,7 +509,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 		},
 		{
 			name: "return filtered by single company",
-			seedRepo: func(t *testing.T, ctx context.Context, r *LedgerRepository) []entities.Transaction {
+			seedRepo: func(t *testing.T, ctx context.Context, r *Repository) []entities.Transaction {
 				e1 := createEntry(t, vos.DebitOperation, account1, vos.Version(1), amount)
 				e2 := createEntry(t, vos.CreditOperation, account2, vos.IgnoreAccountVersion, amount)
 
@@ -554,7 +560,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 		},
 		{
 			name: "return filtered by multiple companies",
-			seedRepo: func(t *testing.T, ctx context.Context, r *LedgerRepository) []entities.Transaction {
+			seedRepo: func(t *testing.T, ctx context.Context, r *Repository) []entities.Transaction {
 				e1 := createEntry(t, vos.DebitOperation, account1, vos.Version(1), amount)
 				e2 := createEntry(t, vos.CreditOperation, account2, vos.IgnoreAccountVersion, amount)
 
@@ -606,7 +612,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 		},
 		{
 			name: "return filtered by single event",
-			seedRepo: func(t *testing.T, ctx context.Context, r *LedgerRepository) []entities.Transaction {
+			seedRepo: func(t *testing.T, ctx context.Context, r *Repository) []entities.Transaction {
 				e1 := createEntry(t, vos.DebitOperation, account1, vos.Version(1), amount)
 				e2 := createEntry(t, vos.CreditOperation, account2, vos.IgnoreAccountVersion, amount)
 
@@ -656,8 +662,8 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 			},
 		},
 		{
-			name: "return filtered by multiple companies",
-			seedRepo: func(t *testing.T, ctx context.Context, r *LedgerRepository) []entities.Transaction {
+			name: "return filtered by multiple events",
+			seedRepo: func(t *testing.T, ctx context.Context, r *Repository) []entities.Transaction {
 				e1 := createEntry(t, vos.DebitOperation, account1, vos.Version(1), amount)
 				e2 := createEntry(t, vos.CreditOperation, account2, vos.IgnoreAccountVersion, amount)
 
@@ -709,7 +715,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 		},
 		{
 			name: "return filtered by operation",
-			seedRepo: func(t *testing.T, ctx context.Context, r *LedgerRepository) []entities.Transaction {
+			seedRepo: func(t *testing.T, ctx context.Context, r *Repository) []entities.Transaction {
 				e1 := createEntry(t, vos.DebitOperation, account1, vos.Version(1), amount)
 				e2 := createEntry(t, vos.CreditOperation, account2, vos.IgnoreAccountVersion, amount)
 
@@ -751,11 +757,14 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			r := NewLedgerRepository(pgDocker.DB, &instrumentators.LedgerInstrumentator{})
-			ctx := context.Background()
+			t.Parallel()
 
-			tests.TruncateTables(ctx, pgDocker.DB, "account_version, entry")
+			db := newDB(t, tt.name)
+
+			r := NewRepository(db, &instrumentators.LedgerInstrumentator{})
+			ctx := context.Background()
 
 			txs := tt.seedRepo(t, ctx, r)
 

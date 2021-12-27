@@ -1,4 +1,4 @@
-package postgres
+package ledger
 
 import (
 	"context"
@@ -22,7 +22,7 @@ from
 ;
 `
 
-func (r LedgerRepository) GetAnalyticAccountBalance(ctx context.Context, account vos.Account) (vos.AccountBalance, error) {
+func (r Repository) GetAnalyticAccountBalance(ctx context.Context, account vos.Account) (vos.AccountBalance, error) {
 	const operation = "Repository.GetAnalyticAccountBalance"
 
 	defer newrelic.NewDatastoreSegment(ctx, collection, operation, getAccountBalanceQuery).End()

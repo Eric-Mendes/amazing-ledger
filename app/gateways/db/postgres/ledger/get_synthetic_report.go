@@ -1,4 +1,4 @@
-package postgres
+package ledger
 
 import (
 	"context"
@@ -26,7 +26,7 @@ and
 group by 1;
 `
 
-func (r *LedgerRepository) GetSyntheticReport(ctx context.Context, query vos.Account, level int, startTime time.Time, endTime time.Time) (*vos.SyntheticReport, error) {
+func (r *Repository) GetSyntheticReport(ctx context.Context, query vos.Account, level int, startTime time.Time, endTime time.Time) (*vos.SyntheticReport, error) {
 	const operation = "Repository.GetSyntheticReport"
 
 	sqlQuery, params := buildQueryAndParams(query, level, startTime, endTime)

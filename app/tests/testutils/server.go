@@ -9,11 +9,11 @@ import (
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/stone-co/the-amazing-ledger/app/gateways/db/postgres/ledger"
 
 	"github.com/stone-co/the-amazing-ledger/app"
 	"github.com/stone-co/the-amazing-ledger/app/domain/instrumentators"
 	"github.com/stone-co/the-amazing-ledger/app/domain/usecases"
-	"github.com/stone-co/the-amazing-ledger/app/gateways/db/postgres"
 	"github.com/stone-co/the-amazing-ledger/app/gateways/rpc"
 	"github.com/stone-co/the-amazing-ledger/app/tests/testenv"
 )
@@ -27,7 +27,7 @@ func StartServer(ctx context.Context, db *pgxpool.Pool, cfg *app.Config, startGa
 	}
 
 	ledgerInstrumentator := instrumentators.NewLedgerInstrumentator(nr)
-	ledgerRepository := postgres.NewLedgerRepository(db, ledgerInstrumentator)
+	ledgerRepository := ledger.NewRepository(db, ledgerInstrumentator)
 	ledgerUsecase := usecases.NewLedgerUseCase(ledgerRepository, ledgerInstrumentator)
 
 	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", cfg.RPCServer.Host, cfg.RPCServer.Port))

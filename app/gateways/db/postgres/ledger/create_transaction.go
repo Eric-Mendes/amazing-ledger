@@ -1,4 +1,4 @@
-package postgres
+package ledger
 
 import (
 	"context"
@@ -21,7 +21,7 @@ const createTransactionQuery = `
 insert into entry (id, tx_id, event, operation, version, amount, competence_date, account, company, metadata)
 values %s;`
 
-func (r LedgerRepository) CreateTransaction(ctx context.Context, transaction entities.Transaction) error {
+func (r Repository) CreateTransaction(ctx context.Context, transaction entities.Transaction) error {
 	const operation = "Repository.CreateTransaction"
 
 	query := r.qb.Build(len(transaction.Entries))

@@ -1,4 +1,4 @@
-package postgres
+package ledger
 
 import (
 	"context"
@@ -8,28 +8,32 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/stone-co/the-amazing-ledger/app/tests/pgtesting"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stone-co/the-amazing-ledger/app"
 	"github.com/stone-co/the-amazing-ledger/app/domain/instrumentators"
 	"github.com/stone-co/the-amazing-ledger/app/domain/vos"
-	"github.com/stone-co/the-amazing-ledger/app/tests"
 )
 
 func TestLedgerRepository_QueryAggregatedBalanceFailure(t *testing.T) {
-	t.Run("should return an error if accounts do not exist", func(t *testing.T) {
-		r := NewLedgerRepository(pgDocker.DB, &instrumentators.LedgerInstrumentator{})
-		ctx := context.Background()
+	t.Parallel()
 
-		query, err := vos.NewAccount("liability.agg.*")
-		assert.NoError(t, err)
+	db := pgtesting.NewDB(t, t.Name())
 
-		_, err = r.GetSyntheticAccountBalance(ctx, query)
-		assert.ErrorIs(t, err, app.ErrAccountNotFound)
-	})
+	r := NewRepository(db, &instrumentators.LedgerInstrumentator{})
+	ctx := context.Background()
+
+	query, err := vos.NewAccount("liability.agg.*")
+	assert.NoError(t, err)
+
+	_, err = r.GetSyntheticAccountBalance(ctx, query)
+	assert.ErrorIs(t, err, app.ErrAccountNotFound)
 }
 
 func TestLedgerRepository_QueryAggregatedBalanceSuccess(t *testing.T) {
+	t.Parallel()
+
 	acc1, err := vos.NewAccount("liability.agg.agg1")
 	assert.NoError(t, err)
 
@@ -50,12 +54,12 @@ func TestLedgerRepository_QueryAggregatedBalanceSuccess(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		repoSeed func(t *testing.T, ctx context.Context, r *LedgerRepository)
+		repoSeed func(t *testing.T, ctx context.Context, r *Repository)
 		wants    wants
 	}{
 		{
 			name: "should query aggregated balance involving two accounts",
-			repoSeed: func(t *testing.T, ctx context.Context, r *LedgerRepository) {
+			repoSeed: func(t *testing.T, ctx context.Context, r *Repository) {
 				e1 := createEntry(t, vos.DebitOperation, acc1.Value(), vos.NextAccountVersion, 100)
 				e2 := createEntry(t, vos.CreditOperation, acc2.Value(), vos.IgnoreAccountVersion, 100)
 				createTransaction(t, ctx, r, e1, e2)
@@ -67,7 +71,7 @@ func TestLedgerRepository_QueryAggregatedBalanceSuccess(t *testing.T) {
 		},
 		{
 			name: "should query aggregated balance involving three accounts (first snapshot)",
-			repoSeed: func(t *testing.T, ctx context.Context, r *LedgerRepository) {
+			repoSeed: func(t *testing.T, ctx context.Context, r *Repository) {
 				e1 := createEntry(t, vos.DebitOperation, acc1.Value(), vos.NextAccountVersion, 100)
 				e2 := createEntry(t, vos.CreditOperation, acc2.Value(), vos.IgnoreAccountVersion, 100)
 				createTransaction(t, ctx, r, e1, e2)
@@ -84,7 +88,7 @@ func TestLedgerRepository_QueryAggregatedBalanceSuccess(t *testing.T) {
 		},
 		{
 			name: "should query aggregated balance involving three accounts (second snapshot)",
-			repoSeed: func(t *testing.T, ctx context.Context, r *LedgerRepository) {
+			repoSeed: func(t *testing.T, ctx context.Context, r *Repository) {
 				e1 := createEntry(t, vos.DebitOperation, acc1.Value(), vos.NextAccountVersion, 100)
 				e2 := createEntry(t, vos.CreditOperation, acc2.Value(), vos.IgnoreAccountVersion, 100)
 				createTransaction(t, ctx, r, e1, e2)
@@ -109,22 +113,25 @@ func TestLedgerRepository_QueryAggregatedBalanceSuccess(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			r := NewLedgerRepository(pgDocker.DB, &instrumentators.LedgerInstrumentator{})
-			tt.repoSeed(t, ctx, r)
+			t.Parallel()
 
-			defer tests.TruncateTables(ctx, pgDocker.DB, "entry", "account_version", "account_balance")
+			db := newDB(t, tt.name)
+
+			ctx := context.Background()
+			r := NewRepository(db, &instrumentators.LedgerInstrumentator{})
+			tt.repoSeed(t, ctx, r)
 
 			balance, err := r.GetSyntheticAccountBalance(ctx, query)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wants.accountBalance, balance.Balance)
 
 			if tt.wants.snapErr != nil {
-				_, err = fetchQuerySnapshot(ctx, pgDocker.DB, query)
+				_, err = fetchQuerySnapshot(ctx, db, query)
 				assert.ErrorIs(t, err, pgx.ErrNoRows)
 			} else {
-				snap, err := fetchQuerySnapshot(ctx, pgDocker.DB, query)
+				snap, err := fetchQuerySnapshot(ctx, db, query)
 				assert.NoError(t, err)
 				assert.Equal(t, tt.wants.snapBalance, snap.balance)
 			}
