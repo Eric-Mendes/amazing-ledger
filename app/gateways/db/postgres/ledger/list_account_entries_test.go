@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -53,7 +56,7 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 					},
 				}
 			},
-			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "=") + _accountEntriesQuerySuffix,
+			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "=") + _accountEntriesQuerySuffixAnalytic,
 			expectedArgs:  []interface{}{account.Value(), start, end, size + 1},
 			expectedErr:   nil,
 		},
@@ -70,7 +73,7 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 					},
 				}
 			},
-			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "~") + _accountEntriesQuerySuffix,
+			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "~") + _accountEntriesQuerySuffixSynthetic,
 			expectedArgs:  []interface{}{synthAccount.Value(), start, end, size + 1},
 			expectedErr:   nil,
 		},
@@ -93,8 +96,8 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 				}
 			},
 			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "=") +
-				fmt.Sprintf(_accountEntriesQueryPagination, 5, 6) +
-				_accountEntriesQuerySuffix,
+				fmt.Sprintf(_accountEntriesQueryPaginationAnalytic, 5, 6) +
+				_accountEntriesQuerySuffixAnalytic,
 			expectedArgs: []interface{}{account.Value(), start, end, size + 1, end, version.AsInt64()},
 			expectedErr:  nil,
 		},
@@ -116,7 +119,7 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 			},
 			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "=") +
 				fmt.Sprintf(_accountEntriesCompanyFilter, 5) +
-				_accountEntriesQuerySuffix,
+				_accountEntriesQuerySuffixAnalytic,
 			expectedArgs: []interface{}{account.Value(), start, end, size + 1, "company_1"},
 			expectedErr:  nil,
 		},
@@ -138,7 +141,7 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 			},
 			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "=") +
 				fmt.Sprintf(_accountEntriesCompaniesFilter, 5) +
-				_accountEntriesQuerySuffix,
+				_accountEntriesQuerySuffixAnalytic,
 			expectedArgs: []interface{}{account.Value(), start, end, size + 1, []string{"company_1", "company_2"}},
 			expectedErr:  nil,
 		},
@@ -160,7 +163,7 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 			},
 			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "=") +
 				fmt.Sprintf(_accountEntriesEventFilter, 5) +
-				_accountEntriesQuerySuffix,
+				_accountEntriesQuerySuffixAnalytic,
 			expectedArgs: []interface{}{account.Value(), start, end, size + 1, int32(1)},
 			expectedErr:  nil,
 		},
@@ -182,7 +185,7 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 			},
 			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "=") +
 				fmt.Sprintf(_accountEntriesEventsFilter, 5) +
-				_accountEntriesQuerySuffix,
+				_accountEntriesQuerySuffixAnalytic,
 			expectedArgs: []interface{}{account.Value(), start, end, size + 1, []int32{1, 2}},
 			expectedErr:  nil,
 		},
@@ -204,7 +207,7 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 			},
 			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "=") +
 				fmt.Sprintf(_accountEntriesOperationFilter, 5) +
-				_accountEntriesQuerySuffix,
+				_accountEntriesQuerySuffixAnalytic,
 			expectedArgs: []interface{}{account.Value(), start, end, size + 1, vos.CreditOperation},
 			expectedErr:  nil,
 		},
@@ -237,8 +240,8 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 				fmt.Sprintf(_accountEntriesCompaniesFilter, 5) +
 				fmt.Sprintf(_accountEntriesEventFilter, 6) +
 				fmt.Sprintf(_accountEntriesOperationFilter, 7) +
-				fmt.Sprintf(_accountEntriesQueryPagination, 8, 9) +
-				_accountEntriesQuerySuffix,
+				fmt.Sprintf(_accountEntriesQueryPaginationAnalytic, 8, 9) +
+				_accountEntriesQuerySuffixAnalytic,
 			expectedArgs: []interface{}{
 				account.Value(), start, end, size + 1,
 				[]string{"company_1", "company_2"}, int32(1), vos.CreditOperation,
@@ -281,7 +284,7 @@ func Test_generateListAccountEntriesQuery(t *testing.T) {
 					},
 				}
 			},
-			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "=") + _accountEntriesQuerySuffix,
+			expectedQuery: fmt.Sprintf(_accountEntriesQueryPrefix, "=") + _accountEntriesQuerySuffixAnalytic,
 			expectedArgs:  []interface{}{account.Value(), start, end, size + 1},
 			expectedErr:   nil,
 		},
@@ -317,8 +320,8 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 	testCases := []struct {
 		name         string
 		seedRepo     func(*testing.T, context.Context, *Repository) []entities.Transaction
-		setupRequest func(*testing.T, []entities.Transaction) vos.AccountEntryRequest
-		want         func(*testing.T, []entities.Transaction) w
+		setupRequest func(*testing.T, []entities.Transaction, *Repository) vos.AccountEntryRequest
+		want         func(*testing.T, []entities.Transaction, *Repository) w
 	}{
 		{
 			name: "no exiting entries case",
@@ -330,7 +333,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 
 				return []entities.Transaction{tx}
 			},
-			setupRequest: func(t *testing.T, _ []entities.Transaction) vos.AccountEntryRequest {
+			setupRequest: func(t *testing.T, _ []entities.Transaction, _ *Repository) vos.AccountEntryRequest {
 				account, err := vos.NewAnalyticAccount("liability.abc.account3")
 				assert.NoError(t, err)
 
@@ -346,7 +349,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 					},
 				}
 			},
-			want: func(_ *testing.T, _ []entities.Transaction) w {
+			want: func(_ *testing.T, _ []entities.Transaction, _ *Repository) w {
 				return w{
 					entries: []vos.AccountEntry{},
 					cursor:  nil,
@@ -363,7 +366,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 
 				return []entities.Transaction{tx}
 			},
-			setupRequest: func(t *testing.T, _ []entities.Transaction) vos.AccountEntryRequest {
+			setupRequest: func(t *testing.T, _ []entities.Transaction, _ *Repository) vos.AccountEntryRequest {
 				account, err := vos.NewAnalyticAccount(account1)
 				assert.NoError(t, err)
 
@@ -379,7 +382,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 					},
 				}
 			},
-			want: func(_ *testing.T, txs []entities.Transaction) w {
+			want: func(_ *testing.T, txs []entities.Transaction, _ *Repository) w {
 				entries := accountEntriesFromTransaction(t, txs[0], account1)
 
 				return w{
@@ -398,7 +401,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 
 				return []entities.Transaction{tx}
 			},
-			setupRequest: func(t *testing.T, _ []entities.Transaction) vos.AccountEntryRequest {
+			setupRequest: func(t *testing.T, _ []entities.Transaction, _ *Repository) vos.AccountEntryRequest {
 				account, err := vos.NewAccount(synthAccount)
 				assert.NoError(t, err)
 
@@ -414,9 +417,8 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 					},
 				}
 			},
-			want: func(_ *testing.T, txs []entities.Transaction) w {
-				entries := accountEntriesFromTransaction(t, txs[0], account1)
-				entries = append(entries, accountEntriesFromTransaction(t, txs[0], account2)...)
+			want: func(_ *testing.T, txs []entities.Transaction, _ *Repository) w {
+				entries := accountEntriesFromTransactionWithSyntheticAccountFilter(t, txs, synthAccount, 2)
 
 				return w{
 					entries: entries,
@@ -439,7 +441,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 
 				return []entities.Transaction{tx1, tx2}
 			},
-			setupRequest: func(t *testing.T, _ []entities.Transaction) vos.AccountEntryRequest {
+			setupRequest: func(t *testing.T, _ []entities.Transaction, _ *Repository) vos.AccountEntryRequest {
 				account, err := vos.NewAnalyticAccount(account1)
 				assert.NoError(t, err)
 
@@ -455,9 +457,9 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 					},
 				}
 			},
-			want: func(t *testing.T, txs []entities.Transaction) w {
+			want: func(t *testing.T, txs []entities.Transaction, r *Repository) w {
 				entries := accountEntriesFromTransaction(t, txs[1], account1)
-				cur := cursorFromTransaction(t, txs[0], account1)
+				cur := cursorFromTransaction(t, txs[0], account1, r)
 
 				return w{
 					entries: entries,
@@ -480,11 +482,11 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 
 				return []entities.Transaction{tx1, tx2}
 			},
-			setupRequest: func(t *testing.T, txs []entities.Transaction) vos.AccountEntryRequest {
+			setupRequest: func(t *testing.T, txs []entities.Transaction, r *Repository) vos.AccountEntryRequest {
 				account, err := vos.NewAnalyticAccount(account1)
 				assert.NoError(t, err)
 
-				cur := cursorFromTransaction(t, txs[0], account1)
+				cur := cursorFromTransaction(t, txs[0], account1, r)
 
 				now := time.Now()
 
@@ -498,7 +500,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 					},
 				}
 			},
-			want: func(t *testing.T, txs []entities.Transaction) w {
+			want: func(t *testing.T, txs []entities.Transaction, _ *Repository) w {
 				entries := accountEntriesFromTransaction(t, txs[0], account1)
 
 				return w{
@@ -532,7 +534,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 
 				return []entities.Transaction{tx1, tx2}
 			},
-			setupRequest: func(t *testing.T, _ []entities.Transaction) vos.AccountEntryRequest {
+			setupRequest: func(t *testing.T, _ []entities.Transaction, _ *Repository) vos.AccountEntryRequest {
 				account, err := vos.NewAnalyticAccount(account1)
 				assert.NoError(t, err)
 
@@ -549,7 +551,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 					},
 				}
 			},
-			want: func(t *testing.T, txs []entities.Transaction) w {
+			want: func(t *testing.T, txs []entities.Transaction, _ *Repository) w {
 				entries := accountEntriesFromTransaction(t, txs[0], account1)
 
 				return w{
@@ -583,7 +585,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 
 				return []entities.Transaction{tx1, tx2}
 			},
-			setupRequest: func(t *testing.T, _ []entities.Transaction) vos.AccountEntryRequest {
+			setupRequest: func(t *testing.T, _ []entities.Transaction, _ *Repository) vos.AccountEntryRequest {
 				account, err := vos.NewAnalyticAccount(account1)
 				assert.NoError(t, err)
 
@@ -600,7 +602,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 					},
 				}
 			},
-			want: func(t *testing.T, txs []entities.Transaction) w {
+			want: func(t *testing.T, txs []entities.Transaction, _ *Repository) w {
 				entries := accountEntriesFromTransaction(t, txs[1], account1)
 				entries = append(entries, accountEntriesFromTransaction(t, txs[0], account1)...)
 
@@ -635,7 +637,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 
 				return []entities.Transaction{tx1, tx2}
 			},
-			setupRequest: func(t *testing.T, _ []entities.Transaction) vos.AccountEntryRequest {
+			setupRequest: func(t *testing.T, _ []entities.Transaction, _ *Repository) vos.AccountEntryRequest {
 				account, err := vos.NewAnalyticAccount(account1)
 				assert.NoError(t, err)
 
@@ -652,7 +654,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 					},
 				}
 			},
-			want: func(t *testing.T, txs []entities.Transaction) w {
+			want: func(t *testing.T, txs []entities.Transaction, _ *Repository) w {
 				entries := accountEntriesFromTransaction(t, txs[0], account1)
 
 				return w{
@@ -686,7 +688,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 
 				return []entities.Transaction{tx1, tx2}
 			},
-			setupRequest: func(t *testing.T, _ []entities.Transaction) vos.AccountEntryRequest {
+			setupRequest: func(t *testing.T, _ []entities.Transaction, _ *Repository) vos.AccountEntryRequest {
 				account, err := vos.NewAnalyticAccount(account1)
 				assert.NoError(t, err)
 
@@ -703,7 +705,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 					},
 				}
 			},
-			want: func(t *testing.T, txs []entities.Transaction) w {
+			want: func(t *testing.T, txs []entities.Transaction, _ *Repository) w {
 				entries := accountEntriesFromTransaction(t, txs[1], account1)
 				entries = append(entries, accountEntriesFromTransaction(t, txs[0], account1)...)
 
@@ -728,7 +730,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 
 				return []entities.Transaction{tx1, tx2}
 			},
-			setupRequest: func(t *testing.T, _ []entities.Transaction) vos.AccountEntryRequest {
+			setupRequest: func(t *testing.T, _ []entities.Transaction, _ *Repository) vos.AccountEntryRequest {
 				account, err := vos.NewAnalyticAccount(account1)
 				assert.NoError(t, err)
 
@@ -745,7 +747,7 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 					},
 				}
 			},
-			want: func(t *testing.T, txs []entities.Transaction) w {
+			want: func(t *testing.T, txs []entities.Transaction, _ *Repository) w {
 				entries := accountEntriesFromTransaction(t, txs[0], account1)
 
 				return w{
@@ -768,12 +770,165 @@ func TestLedgerRepository_ListAccountEntries(t *testing.T) {
 
 			txs := tt.seedRepo(t, ctx, r)
 
-			req := tt.setupRequest(t, txs)
+			req := tt.setupRequest(t, txs, r)
 
 			resp, cur, err := r.ListAccountEntries(ctx, req)
-			want := tt.want(t, txs)
+			want := tt.want(t, txs, r)
 			got := w{entries: resp, cursor: cur}
+
 			assert.NoError(t, err)
+			assert.Equal(t, len(want.entries), len(got.entries))
+			for i := range got.entries {
+				for j := range want.entries {
+					if got.entries[i].ID == want.entries[j].ID {
+						assert.WithinDuration(t, want.entries[j].CreatedAt, got.entries[i].CreatedAt, time.Minute)
+						want.entries[j].CreatedAt = got.entries[i].CreatedAt
+					}
+				}
+			}
+			assert.Equal(t, want, got)
+		})
+	}
+}
+
+func TestLedgerRepository_ListAccountEntriesWithSyntheticAccount(t *testing.T) {
+	t.Parallel()
+
+	const (
+		account1     = "asset.cash.cash"
+		account2     = "asset.accounts_receivable.clients.1"
+		account3     = "asset.accounts_receivable.clients.2"
+		synthAccount = "asset.accounts_receivable.*"
+	)
+
+	testCases := []struct {
+		name         string
+		pageSize     int
+		seedRepo     func(*testing.T, context.Context, *Repository) []entities.Transaction
+		setupRequest func(*testing.T, []entities.Transaction, int) vos.AccountEntryRequest
+		want         func(*testing.T, []entities.Transaction, int) []vos.AccountEntry
+	}{
+		{
+			name:     "return last two entries",
+			pageSize: 2,
+			seedRepo: func(t *testing.T, ctx context.Context, r *Repository) []entities.Transaction {
+				e1 := createEntry(t, vos.DebitOperation, account1, vos.Version(1), 100)
+				e2 := createEntry(t, vos.CreditOperation, account2, vos.IgnoreAccountVersion, 100)
+
+				tx1 := createTransaction(t, ctx, r, e1, e2)
+
+				e1 = createEntry(t, vos.DebitOperation, account1, vos.Version(2), 100)
+				e2 = createEntry(t, vos.CreditOperation, account2, vos.IgnoreAccountVersion, 30)
+				e3 := createEntry(t, vos.CreditOperation, account2, vos.IgnoreAccountVersion, 10)
+				e4 := createEntry(t, vos.CreditOperation, account3, vos.IgnoreAccountVersion, 60)
+
+				tx2 := createTransaction(t, ctx, r, e1, e2, e3, e4)
+
+				return []entities.Transaction{tx1, tx2}
+			},
+			setupRequest: func(t *testing.T, txs []entities.Transaction, pageSize int) vos.AccountEntryRequest {
+				account, err := vos.NewAccount(synthAccount)
+				assert.NoError(t, err)
+
+				now := time.Now()
+
+				return vos.AccountEntryRequest{
+					Account:   account,
+					StartDate: now.Add(-10 * time.Second),
+					EndDate:   now.Add(10 * time.Second),
+					Page: pagination.Page{
+						Size:   pageSize,
+						Cursor: nil,
+					},
+				}
+			},
+			want: func(t *testing.T, txs []entities.Transaction, pageSize int) []vos.AccountEntry {
+				return accountEntriesFromTransactionWithSyntheticAccountFilter(t, txs, synthAccount, pageSize)
+			},
+		},
+		{
+			name:     "multiple entries, return the last five",
+			pageSize: 5,
+			seedRepo: func(t *testing.T, ctx context.Context, r *Repository) []entities.Transaction {
+				e1 := createEntry(t, vos.DebitOperation, account2, vos.IgnoreAccountVersion, 1)
+				e2 := createEntry(t, vos.CreditOperation, account1, vos.Version(1), 1)
+
+				tx1 := createTransaction(t, ctx, r, e1, e2)
+
+				e1 = createEntry(t, vos.DebitOperation, account1, vos.Version(2), 100)
+				e2 = createEntry(t, vos.CreditOperation, account2, vos.IgnoreAccountVersion, 30)
+				e3 := createEntry(t, vos.CreditOperation, account2, vos.IgnoreAccountVersion, 10)
+				e4 := createEntry(t, vos.CreditOperation, account3, vos.IgnoreAccountVersion, 60)
+
+				tx2 := createTransaction(t, ctx, r, e1, e2, e3, e4)
+
+				entries := make([]entities.Entry, 0, 20)
+				for i := 0; i < 10; i++ {
+					entries = append(entries,
+						createEntry(t, vos.DebitOperation, account1, vos.NextAccountVersion, 100),
+						createEntry(t, vos.CreditOperation, account2, vos.IgnoreAccountVersion, 100))
+				}
+				tx3 := createTransaction(t, ctx, r, entries...)
+
+				return []entities.Transaction{tx1, tx2, tx3}
+			},
+			setupRequest: func(t *testing.T, txs []entities.Transaction, pageSize int) vos.AccountEntryRequest {
+				account, err := vos.NewAccount(synthAccount)
+				assert.NoError(t, err)
+
+				now := time.Now()
+
+				return vos.AccountEntryRequest{
+					Account:   account,
+					StartDate: now.Add(-10 * time.Second),
+					EndDate:   now.Add(10 * time.Second),
+					Page: pagination.Page{
+						Size:   pageSize,
+						Cursor: nil,
+					},
+				}
+			},
+			want: func(t *testing.T, txs []entities.Transaction, pageSize int) []vos.AccountEntry {
+				return accountEntriesFromTransactionWithSyntheticAccountFilter(t, txs, synthAccount, pageSize)
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			// setup
+			db := newDB(t, tt.name)
+			r := NewRepository(db, &instrumentators.LedgerInstrumentator{})
+			ctx := context.Background()
+			txs := tt.seedRepo(t, ctx, r)
+			req := tt.setupRequest(t, txs, tt.pageSize)
+			want := tt.want(t, txs, tt.pageSize)
+
+			// execute
+			var got []vos.AccountEntry
+			for {
+				resp, cur, err := r.ListAccountEntries(ctx, req)
+				assert.NoError(t, err)
+				if cur == nil {
+					got = resp
+					break
+				}
+				req.Page.Cursor = cur
+			}
+
+			// assert
+			assert.Equal(t, len(want), len(got), "assert len")
+			for i := range got {
+				for j := range want {
+					if got[i].ID == want[j].ID {
+						assert.WithinDuration(t, want[j].CreatedAt, got[i].CreatedAt, time.Minute)
+						want[j].CreatedAt = got[i].CreatedAt
+					}
+				}
+			}
 			assert.Equal(t, want, got)
 		})
 	}
@@ -799,6 +954,7 @@ func accountEntriesFromTransaction(t *testing.T, tx entities.Transaction, accoun
 			Operation:      et.Operation,
 			Amount:         et.Amount,
 			Event:          int(tx.Event),
+			CreatedAt:      time.Now(),
 			CompetenceDate: tx.CompetenceDate.Round(time.Microsecond),
 			Metadata:       mt,
 		})
@@ -807,7 +963,73 @@ func accountEntriesFromTransaction(t *testing.T, tx entities.Transaction, accoun
 	return act
 }
 
-func cursorFromTransaction(t *testing.T, tx entities.Transaction, account string) pagination.Cursor {
+func accountEntriesFromTransactionWithSyntheticAccountFilter(t *testing.T, txs []entities.Transaction, syntheticAcc string, pageSize int) []vos.AccountEntry {
+	t.Helper()
+
+	regex := regexp.MustCompile(strings.ReplaceAll(syntheticAcc, "*", "[^.]+"))
+
+	// order by competence date desc
+	sort.Slice(txs, func(i, j int) bool {
+		return txs[i].CompetenceDate.After(txs[j].CompetenceDate)
+	})
+
+	var totalRows int
+	for i := range txs {
+		var entries []entities.Entry
+		for _, e := range txs[i].Entries {
+			if regex.MatchString(e.Account.Value()) {
+				entries = append(entries, e)
+			}
+		}
+
+		// order by id desc
+		sort.Slice(entries, func(j, k int) bool {
+			return entries[j].ID.String() > entries[k].ID.String()
+		})
+
+		txs[i].Entries = entries
+		totalRows += len(entries)
+	}
+
+	act := make([]vos.AccountEntry, 0)
+	var rowCount, startAtPosition int
+	if totalRows > pageSize {
+		totalPages := totalRows / pageSize
+		if totalRows > totalPages*pageSize {
+			startAtPosition = totalPages * pageSize
+		} else {
+			startAtPosition = totalPages * (pageSize - 1)
+		}
+	}
+
+	for _, tx := range txs {
+		for _, et := range tx.Entries {
+			if rowCount < startAtPosition {
+				rowCount++
+				continue
+			}
+			var mt map[string]interface{}
+			err := json.Unmarshal(et.Metadata, &mt)
+			assert.NoError(t, err)
+
+			act = append(act, vos.AccountEntry{
+				ID:             et.ID,
+				Account:        et.Account.Value(),
+				Version:        et.Version,
+				Operation:      et.Operation,
+				Amount:         et.Amount,
+				Event:          int(tx.Event),
+				CreatedAt:      time.Now(),
+				CompetenceDate: tx.CompetenceDate.Round(time.Microsecond),
+				Metadata:       mt,
+			})
+		}
+	}
+
+	return act
+}
+
+func cursorFromTransaction(t *testing.T, tx entities.Transaction, account string, repository *Repository) pagination.Cursor {
 	t.Helper()
 
 	var et entities.Entry
@@ -819,8 +1041,16 @@ func cursorFromTransaction(t *testing.T, tx entities.Transaction, account string
 	}
 	assert.NotEmpty(t, et)
 
+	q := `select created_at from entry where id = $1`
+
+	var createdAt time.Time
+	err := repository.db.QueryRow(context.Background(), q, et.ID).Scan(&createdAt)
+	assert.NoError(t, err)
+
 	cur, err := pagination.NewCursor(listAccountEntriesCursor{
+		ID:             et.ID.String(),
 		CompetenceDate: tx.CompetenceDate.Round(time.Microsecond),
+		CreatedAt:      createdAt,
 		Version:        et.Version.AsInt64(),
 	})
 	assert.NoError(t, err)

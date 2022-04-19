@@ -19,6 +19,7 @@ select
 	operation,
 	amount,
 	event,
+	created_at,
 	competence_date,
 	metadata
 from
@@ -49,20 +50,34 @@ where
 	and operation = $%d
 `
 
-	_accountEntriesQueryPagination = `
+	_accountEntriesQueryPaginationAnalytic = `
 	and (competence_date, version) <= ($%d, $%d)
 `
+	_accountEntriesQueryPaginationSynthetic = `
+	and ((competence_date <= $%d and created_at = $%d and id <= $%d)
+	or (competence_date <= $%d and created_at < $%d))
+`
 
-	_accountEntriesQuerySuffix = `
+	_accountEntriesQuerySuffixAnalytic = `
 order by
 	competence_date desc,
 	version desc
 limit $4;
 `
+
+	_accountEntriesQuerySuffixSynthetic = `
+order by
+	competence_date desc,
+	created_at desc,
+	id desc
+limit $4;
+`
 )
 
 type listAccountEntriesCursor struct {
+	ID             string    `json:"id"`
 	CompetenceDate time.Time `json:"competence_date"`
+	CreatedAt      time.Time `json:"created_at"`
 	Version        int64     `json:"version"`
 }
 
@@ -95,6 +110,7 @@ func (r Repository) ListAccountEntries(ctx context.Context, req vos.AccountEntry
 			&entry.Operation,
 			&entry.Amount,
 			&entry.Event,
+			&entry.CreatedAt,
 			&entry.CompetenceDate,
 			&entry.Metadata,
 		); err != nil {
@@ -116,7 +132,9 @@ func (r Repository) ListAccountEntries(ctx context.Context, req vos.AccountEntry
 	entries = entries[:len(entries)-1]
 
 	cursor, err := pag.NewCursor(listAccountEntriesCursor{
+		ID:             lastEntry.ID.String(),
 		CompetenceDate: lastEntry.CompetenceDate,
+		CreatedAt:      lastEntry.CreatedAt,
 		Version:        lastEntry.Version.AsInt64(),
 	})
 	if err != nil {
@@ -178,10 +196,25 @@ func generateListAccountEntriesQuery(req vos.AccountEntryRequest) (string, []int
 			return "", nil, err
 		}
 
-		query += fmt.Sprintf(_accountEntriesQueryPagination, totalArgs+1, totalArgs+2)
-		args = append(args, cursor.CompetenceDate, cursor.Version)
+		if req.Account.Type() == vos.Analytic {
+			query += fmt.Sprintf(_accountEntriesQueryPaginationAnalytic, totalArgs+1, totalArgs+2)
+			args = append(args, cursor.CompetenceDate, cursor.Version)
+		}
+
+		if req.Account.Type() == vos.Synthetic {
+			query += fmt.Sprintf(_accountEntriesQueryPaginationSynthetic, totalArgs+1, totalArgs+2, totalArgs+3, totalArgs+1, totalArgs+2)
+			args = append(args, cursor.CompetenceDate, cursor.CreatedAt, cursor.ID)
+		}
+
 	}
-	query += _accountEntriesQuerySuffix
+
+	if req.Account.Type() == vos.Analytic {
+		query += _accountEntriesQuerySuffixAnalytic
+	}
+
+	if req.Account.Type() == vos.Synthetic {
+		query += _accountEntriesQuerySuffixSynthetic
+	}
 
 	return query, args, nil
 }

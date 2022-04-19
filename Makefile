@@ -11,7 +11,7 @@ GIT_COMMIT=$(shell git rev-parse HEAD)
 GIT_BUILD_TIME=$(shell date '+%Y-%m-%d__%I:%M:%S%p')
 
 BUF_VERSION=0.43.2
-GOLANGCI_LINT_VERSION=1.43.0
+GOLANGCI_LINT_VERSION=1.45.2
 
 .PHONY: setup
 setup:

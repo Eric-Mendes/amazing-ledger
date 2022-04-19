@@ -47,6 +47,7 @@ type AccountEntry struct {
 	Operation      OperationType
 	Amount         int
 	Event          int
+	CreatedAt      time.Time
 	CompetenceDate time.Time
 	Metadata       map[string]interface{}
 }
