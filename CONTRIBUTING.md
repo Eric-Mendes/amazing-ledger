@@ -33,4 +33,4 @@ For more best practices details, read
 All of our issues have a template with tips for describing the problem. Try to follow the proposed structure, this helps the reviewer a lot.
 
 ## License
-By contributing, you agree that your contributions will be licensed under its [MIT license](LICENSE).
+By contributing, you agree that your contributions will be licensed under its [Apache-2.0 License](LICENSE).
